@@ -1,0 +1,487 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CRM — Вкусная Доставка</title>
+    <script src="https://unpkg.com/vk-bridge@2/dist/vk-bridge.min.js"></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: 'Inter', sans-serif; background: linear-gradient(160deg, #1B4332 0%, #2D6A4F 40%, #40916C 100%); color: #D8F3DC; min-height: 100vh; }
+        .app { max-width: 1200px; margin: 0 auto; padding: 24px; }
+
+        .glass { background: rgba(119,200,148,0.1); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border: 1px solid rgba(119,200,148,0.15); border-radius: 20px; }
+        .neo { box-shadow: 8px 8px 16px rgba(0,0,0,0.5), -4px -4px 12px rgba(119,200,148,0.05); }
+
+        .header { display: flex; justify-content: space-between; align-items: center; padding: 20px 28px; margin-bottom: 24px; }
+        .header h1 { font-size: 20px; font-weight: 600; background: linear-gradient(135deg, #D8F3DC, #40C057); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .header .refresh { background: rgba(64,192,87,0.15); color: #40C057; border: 1px solid rgba(64,192,87,0.25); padding: 10px 20px; border-radius: 12px; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.3s; }
+        .header .refresh:hover { background: rgba(64,192,87,0.25); box-shadow: 0 0 20px rgba(64,192,87,0.2); }
+
+        .stats { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; margin-bottom: 24px; }
+        .stat-card { padding: 24px; transition: all 0.3s; }
+        .stat-card:hover { transform: translateY(-2px); box-shadow: 10px 10px 20px rgba(0,0,0,0.5), -4px -4px 12px rgba(119,200,148,0.06); }
+        .stat-card .icon { width: 44px; height: 44px; border-radius: 12px; display: flex; align-items: center; justify-content: center; font-size: 18px; margin-bottom: 14px; }
+        .stat-card .icon.c1 { background: rgba(64,192,87,0.2); color: #40C057; }
+        .stat-card .icon.c2 { background: rgba(119,200,148,0.15); color: #77C894; }
+        .stat-card .icon.c3 { background: rgba(82,183,136,0.2); color: #52B788; }
+        .stat-card .icon.c4 { background: rgba(149,213,178,0.12); color: #95D5B2; }
+        .stat-card h3 { color: #95D5B2; font-size: 11px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.8px; margin-bottom: 6px; opacity: 0.8; }
+        .stat-card .value { font-size: 26px; font-weight: 700; }
+        .stat-card .value.c1 { color: #40C057; }
+        .stat-card .value.c2 { color: #77C894; }
+        .stat-card .value.c3 { color: #D8F3DC; }
+        .stat-card .value.c4 { color: #52B788; }
+
+        .tabs { display: flex; gap: 6px; margin-bottom: 24px; padding: 6px; border-radius: 16px; background: rgba(119,200,148,0.06); border: 1px solid rgba(119,200,148,0.1); display: inline-flex; }
+        .tab { padding: 10px 24px; border: none; border-radius: 12px; color: #95D5B2; cursor: pointer; font-size: 13px; font-weight: 500; transition: all 0.3s; background: transparent; opacity: 0.7; }
+        .tab.active { background: rgba(64,192,87,0.2); color: #D8F3DC; opacity: 1; box-shadow: 0 0 20px rgba(64,192,87,0.15); }
+        .tab:hover { opacity: 1; }
+        .tab .badge { background: rgba(64,192,87,0.25); color: #40C057; padding: 2px 8px; border-radius: 8px; font-size: 11px; margin-left: 6px; }
+
+        .panel { border-radius: 20px; overflow: hidden; }
+        .panel-header { padding: 20px 24px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(119,200,148,0.06); }
+        .panel-header h2 { font-size: 16px; font-weight: 600; }
+        .btn { padding: 8px 16px; border: none; border-radius: 10px; cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.3s; display: inline-flex; align-items: center; gap: 6px; }
+        .btn i { font-size: 11px; }
+        .btn-primary { background: rgba(45,106,79,0.5); color: #52B788; border: 1px solid rgba(82,183,136,0.3); }
+        .btn-primary:hover { background: rgba(45,106,79,0.7); box-shadow: 0 0 15px rgba(82,183,136,0.2); }
+        .btn-success { background: rgba(64,192,87,0.2); color: #40C057; border: 1px solid rgba(64,192,87,0.3); }
+        .btn-success:hover { background: rgba(64,192,87,0.3); box-shadow: 0 0 12px rgba(64,192,87,0.2); }
+        .btn-danger { background: rgba(180,60,60,0.2); color: #e88; border: 1px solid rgba(180,60,60,0.2); }
+        .btn-danger:hover { background: rgba(180,60,60,0.35); }
+        .btn-ghost { background: transparent; color: #95D5B2; border: 1px solid rgba(119,200,148,0.1); }
+        .btn-ghost:hover { color: #D8F3DC; border-color: rgba(119,200,148,0.2); }
+
+        .order-item { padding: 18px 24px; border-bottom: 1px solid rgba(119,200,148,0.05); display: flex; justify-content: space-between; align-items: center; transition: all 0.2s; cursor: pointer; }
+        .order-item:hover { background: rgba(119,200,148,0.04); }
+        .order-item:last-child { border-bottom: none; }
+        .order-id { font-weight: 700; color: #40C057; font-size: 15px; }
+        .order-badge { padding: 4px 10px; border-radius: 8px; font-size: 11px; font-weight: 600; }
+        .badge-new { background: rgba(64,192,87,0.2); color: #40C057; }
+        .badge-confirmed { background: rgba(82,183,136,0.2); color: #52B788; }
+        .badge-preparing { background: rgba(119,200,148,0.15); color: #77C894; }
+        .badge-ready { background: rgba(149,213,178,0.15); color: #95D5B2; }
+        .badge-delivering { background: rgba(82,183,136,0.15); color: #52B788; }
+        .badge-delivered { background: rgba(64,192,87,0.25); color: #40C057; }
+        .badge-cancelled { background: rgba(180,60,60,0.2); color: #e88; }
+        .order-meta { color: #95D5B2; font-size: 12px; margin-top: 6px; display: flex; gap: 12px; flex-wrap: wrap; opacity: 0.8; }
+        .order-meta span { display: inline-flex; align-items: center; gap: 4px; }
+        .order-price { font-size: 20px; font-weight: 700; color: #D8F3DC; }
+        .actions { display: flex; gap: 6px; margin-top: 8px; }
+
+        .menu-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 16px; padding: 20px 24px; }
+        .menu-card { padding: 20px; border-radius: 16px; transition: all 0.3s; position: relative; overflow: hidden; }
+        .menu-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px; border-radius: 16px 16px 0 0; }
+        .menu-card.cat-pizza::before { background: linear-gradient(90deg, #40C057, #95D5B2); }
+        .menu-card.cat-ramen::before { background: linear-gradient(90deg, #2D6A4F, #52B788); }
+        .menu-card.cat-salads::before { background: linear-gradient(90deg, #1B4332, #77C894); }
+        .menu-card.cat-burgers::before { background: linear-gradient(90deg, #52B788, #D8F3DC); }
+        .menu-card.cat-snacks::before { background: linear-gradient(90deg, #40C057, #2D6A4F); }
+        .menu-card.cat-drinks::before { background: linear-gradient(90deg, #1B4332, #40C057); }
+        .menu-card:hover { transform: translateY(-3px); box-shadow: 10px 10px 20px rgba(0,0,0,0.5); }
+        .menu-card .card-top { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 8px; }
+        .menu-card h4 { font-size: 15px; font-weight: 600; margin-bottom: 4px; color: #D8F3DC; }
+        .menu-card .category-tag { font-size: 11px; color: #52B788; background: rgba(82,183,136,0.15); padding: 3px 10px; border-radius: 6px; white-space: nowrap; }
+        .menu-card .desc { color: #95D5B2; font-size: 13px; margin: 8px 0 12px; line-height: 1.4; opacity: 0.8; }
+        .menu-card .price { font-size: 22px; font-weight: 700; background: linear-gradient(135deg, #40C057, #D8F3DC); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .menu-card .card-actions { display: flex; gap: 8px; margin-top: 14px; padding-top: 14px; border-top: 1px solid rgba(119,200,148,0.08); }
+
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(13,40,24,0.8); backdrop-filter: blur(8px); display: flex; align-items: center; justify-content: center; z-index: 100; }
+        .modal { padding: 28px; width: 460px; max-width: 90vw; }
+        .modal h2 { margin-bottom: 20px; font-size: 18px; font-weight: 600; color: #D8F3DC; }
+        .modal input, .modal select { width: 100%; padding: 12px 14px; background: rgba(119,200,148,0.08); border: 1px solid rgba(119,200,148,0.12); border-radius: 10px; color: #D8F3DC; font-size: 14px; margin-bottom: 12px; font-family: inherit; outline: none; transition: border-color 0.3s; }
+        .modal input:focus, .modal select:focus { border-color: rgba(64,192,87,0.5); }
+        .modal .btn-row { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+        .modal select option { background: #1B4332; color: #D8F3DC; }
+
+        .order-detail-items { margin: 16px 0; }
+        .order-detail-row { display: flex; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid rgba(119,200,148,0.05); font-size: 14px; }
+        .order-detail-row:last-child { border-bottom: none; }
+        .order-detail-qty { color: #52B788; margin: 0 16px; }
+        .order-detail-total { display: flex; justify-content: space-between; padding: 14px 0; margin-top: 8px; border-top: 2px solid rgba(64,192,87,0.3); font-size: 18px; font-weight: 700; }
+        .order-detail-label { color: #52B788; font-size: 12px; margin-bottom: 4px; text-transform: uppercase; letter-spacing: 0.5px; opacity: 0.8; }
+        .order-detail-value { margin-bottom: 14px; font-size: 14px; }
+        .detail-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin: 12px 0; }
+        .empty { padding: 60px; text-align: center; color: #95D5B2; font-size: 14px; opacity: 0.5; }
+    </style>
+</head>
+<body>
+    <div id="root"></div>
+    <script type="text/babel">
+        const { useState, useEffect, useCallback } = React;
+
+        const isInVK = !!(window.VKBridge && window.VKBridge.send);
+        const API_BASE = (window.VK_MINI_APP_CONFIG && window.VK_MINI_APP_CONFIG.API_URL) || (window.location.origin + '/api');
+
+        if (isInVK) {
+            window.VKBridge.send('VKWebAppInit');
+        }
+
+        const API = API_BASE;
+
+        const STATUS_MAP = {
+            new: 'Новый', confirmed: 'Подтвержден', preparing: 'Готовится',
+            ready: 'Готов', delivering: 'В доставке', delivered: 'Доставлен', cancelled: 'Отменён'
+        };
+        const STATUS_FLOW_DELIVERY = ['new', 'confirmed', 'preparing', 'ready', 'delivering', 'delivered'];
+        const STATUS_FLOW_PICKUP = ['new', 'confirmed', 'preparing', 'ready', 'delivered'];
+        const DELIVERY_ICON = { delivery: 'fa-truck', pickup: 'fa-store' };
+        const PAYMENT_ICON = { card: 'fa-credit-card', cash: 'fa-money-bill-wave', online: 'fa-globe' };
+        const PAYMENT_LABEL = { card: 'Карта', cash: 'Наличные', online: 'Онлайн' };
+        const CAT_MAP = { 'Пицца': 'cat-pizza', 'Рамен': 'cat-ramen', 'Салаты': 'cat-salads', 'Бургеры': 'cat-burgers', 'Снэки': 'cat-snacks', 'Напитки': 'cat-drinks' };
+        const CAT_ICON = { 'Пицца': 'fa-pizza-slice', 'Рамен': 'fa-bowl-food', 'Салаты': 'fa-leaf', 'Бургеры': 'fa-burger', 'Снэки': 'fa-french-fries', 'Напитки': 'fa-wine-glass' };
+        const STATUS_LABEL_PICKUP = { delivered: 'Выдать' };
+
+        const App = () => {
+            const [tab, setTab] = useState('orders');
+            const [orders, setOrders] = useState([]);
+            const [menu, setMenu] = useState([]);
+            const [stats, setStats] = useState({ orders: 0, revenue: 0 });
+            const [weekStats, setWeekStats] = useState({ orders: 0, revenue: 0 });
+            const [orderDetail, setOrderDetail] = useState(null);
+            const [menuModal, setMenuModal] = useState(null);
+            const [newItem, setNewItem] = useState({ name: '', description: '', price: '', category: 'Пицца' });
+            const [botStatus, setBotStatus] = useState({ running: false, pid: null, uptime: null });
+            const [botLogs, setBotLogs] = useState([]);
+
+            const load = useCallback(async () => {
+                try {
+                    const [o, m, s, w] = await Promise.all([
+                        fetch(`${API}/orders`).then(r => r.json()),
+                        fetch(`${API}/menu`).then(r => r.json()),
+                        fetch(`${API}/stats`).then(r => r.json()),
+                        fetch(`${API}/stats/week`).then(r => r.json())
+                    ]);
+                    setOrders(o); setMenu(m); setStats(s); setWeekStats(w);
+                } catch (e) { console.error(e); }
+            }, []);
+
+            const loadBotStatus = useCallback(async () => {
+                try {
+                    const s = await fetch(`${API}/bot/status`).then(r => r.json());
+                    setBotStatus(s);
+                } catch (e) { console.error(e); }
+            }, []);
+
+            const loadBotLogs = useCallback(async () => {
+                try {
+                    const l = await fetch(`${API}/bot/logs?lines=30`).then(r => r.json());
+                    setBotLogs(l.lines || []);
+                } catch (e) { console.error(e); }
+            }, []);
+
+            useEffect(() => { load(); loadBotStatus(); const t = setInterval(() => { load(); loadBotStatus(); }, 10000); return () => clearInterval(t); }, [load, loadBotStatus]);
+            useEffect(() => { if (tab === 'bot') { loadBotLogs(); const t = setInterval(loadBotLogs, 5000); return () => clearInterval(t); } }, [tab, loadBotLogs]);
+
+            const updateStatus = async (id, status) => {
+                await fetch(`${API}/orders/${id}/status`, {
+                    method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({status})
+                });
+                load();
+            };
+
+            const nextStatus = (current, deliveryType) => {
+                const flow = deliveryType === 'pickup' ? STATUS_FLOW_PICKUP : STATUS_FLOW_DELIVERY;
+                const idx = flow.indexOf(current);
+                return idx >= 0 && idx < flow.length - 1 ? flow[idx + 1] : null;
+            };
+
+            const openOrderDetail = async (orderId) => {
+                try {
+                    const res = await fetch(`${API}/orders/${orderId}`);
+                    const data = await res.json();
+                    setOrderDetail(data);
+                } catch (e) { console.error(e); }
+            };
+
+            const saveMenuItem = async () => {
+                const body = { ...newItem, price: parseFloat(newItem.price) };
+                if (menuModal === 'new') {
+                    await fetch(`${API}/menu`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                } else {
+                    await fetch(`${API}/menu/${menuModal}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                }
+                setMenuModal(null);
+                setNewItem({ name: '', description: '', price: '', category: 'Пицца' });
+                load();
+            };
+
+            const deleteMenuItem = async (id) => {
+                if (!confirm('Удалить блюдо?')) return;
+                await fetch(`${API}/menu/${id}`, { method: 'DELETE' });
+                load();
+            };
+
+            const openEdit = (item) => {
+                setNewItem({ name: item.name, description: item.description, price: item.price, category: item.category });
+                setMenuModal(item.id);
+            };
+
+            const botAction = async (action) => {
+                await fetch(`${API}/bot/${action}`, { method: 'POST' });
+                setTimeout(loadBotStatus, 1000);
+            };
+
+            const activeOrders = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled');
+
+            return (
+                <div className="app">
+                    <div className="header glass">
+                        <h1><i className="fa-solid fa-burger" style={{marginRight: 10}}></i>Вкусная Доставка — CRM</h1>
+                        <button className="refresh" onClick={load}><i className="fa-solid fa-rotate"></i> Обновить</button>
+                    </div>
+
+                    <div className="stats">
+                        <div className="stat-card glass neo">
+                            <div className="icon c1"><i className="fa-solid fa-receipt"></i></div>
+                            <h3>Заказов сегодня</h3>
+                            <div className="value c1">{stats.orders}</div>
+                        </div>
+                        <div className="stat-card glass neo">
+                            <div className="icon c2"><i className="fa-solid fa-ruble-sign"></i></div>
+                            <h3>Выручка сегодня</h3>
+                            <div className="value c2">{stats.revenue}₽</div>
+                        </div>
+                        <div className="stat-card glass neo">
+                            <div className="icon c3"><i className="fa-solid fa-calendar-week"></i></div>
+                            <h3>За неделю</h3>
+                            <div className="value c3">{weekStats.orders} заказов</div>
+                        </div>
+                        <div className="stat-card glass neo">
+                            <div className="icon c4"><i className="fa-solid fa-chart-line"></i></div>
+                            <h3>Выручка за неделю</h3>
+                            <div className="value c4">{weekStats.revenue}₽</div>
+                        </div>
+                    </div>
+
+                    <div className="tabs">
+                        <button className={`tab ${tab === 'orders' ? 'active' : ''}`} onClick={() => setTab('orders')}>
+                            <i className="fa-solid fa-box"></i> Заказы <span className="badge">{activeOrders.length}</span>
+                        </button>
+                        <button className={`tab ${tab === 'menu' ? 'active' : ''}`} onClick={() => setTab('menu')}>
+                            <i className="fa-solid fa-utensils"></i> Меню <span className="badge">{menu.length}</span>
+                        </button>
+                        <button className={`tab ${tab === 'bot' ? 'active' : ''}`} onClick={() => setTab('bot')}>
+                            <i className="fa-solid fa-robot"></i> Бот <span className="badge" style={{background: botStatus.running ? 'rgba(64,192,87,0.25)' : 'rgba(180,60,60,0.2)', color: botStatus.running ? '#40C057' : '#e88'}}>{botStatus.running ? 'ON' : 'OFF'}</span>
+                        </button>
+                    </div>
+
+                    {tab === 'orders' && (
+                        <div className="panel glass">
+                            <div className="panel-header">
+                                <h2>Заказы</h2>
+                            </div>
+                            {orders.length === 0 ? (
+                                <div className="empty"><i className="fa-solid fa-inbox" style={{fontSize: 32, marginBottom: 12, display: 'block'}}></i>Нет заказов</div>
+                            ) : (
+                                orders.map(order => (
+                                    <div key={order.id} className="order-item" onClick={() => openOrderDetail(order.id)}>
+                                        <div style={{flex: 1}}>
+                                            <div>
+                                                <span className="order-id">#{order.id}</span>
+                                                <span className={`order-badge badge-${order.status}`} style={{marginLeft: 8}}>{STATUS_MAP[order.status]}</span>
+                                            </div>
+                                            <div className="order-meta">
+                                                <span><i className={`fa-solid ${DELIVERY_ICON[order.delivery_type]}`}></i> {order.delivery_type === 'delivery' ? 'Доставка' : 'Самовывоз'}</span>
+                                                {order.address && <span><i className="fa-solid fa-location-dot"></i> {order.address}</span>}
+                                                {order.payment_method && <span><i className={`fa-solid ${PAYMENT_ICON[order.payment_method]}`}></i> {PAYMENT_LABEL[order.payment_method]}</span>}
+                                                {order.created_at && <span><i className="fa-regular fa-clock"></i> {new Date(order.created_at).toLocaleString('ru-RU')}</span>}
+                                            </div>
+                                        </div>
+                                        <div style={{textAlign: 'right'}}>
+                                            <div className="order-price">{order.total_price}₽</div>
+                                            <div className="actions">
+                                                {order.status !== 'delivered' && order.status !== 'cancelled' && nextStatus(order.status, order.delivery_type) && (
+                                                    <button className="btn btn-success" onClick={(e) => { e.stopPropagation(); updateStatus(order.id, nextStatus(order.status, order.delivery_type)); }}>
+                                                        <i className="fa-solid fa-arrow-right"></i>
+                                                        {order.delivery_type === 'pickup' && STATUS_LABEL_PICKUP[nextStatus(order.status, order.delivery_type)] || STATUS_MAP[nextStatus(order.status, order.delivery_type)]}
+                                                    </button>
+                                                )}
+                                                {order.status !== 'delivered' && order.status !== 'cancelled' && (
+                                                    <button className="btn btn-danger" onClick={(e) => { e.stopPropagation(); updateStatus(order.id, 'cancelled'); }}>
+                                                        <i className="fa-solid fa-xmark"></i>
+                                                    </button>
+                                                )}
+                                            </div>
+                                        </div>
+                                    </div>
+                                ))
+                            )}
+                        </div>
+                    )}
+
+                    {tab === 'menu' && (
+                        <div>
+                            <div className="panel-header glass" style={{marginBottom: 16, borderRadius: 16}}>
+                                <h2><i className="fa-solid fa-utensils" style={{marginRight: 8}}></i>Меню</h2>
+                                <button className="btn btn-success" onClick={() => { setNewItem({name:'',description:'',price:'',category:'Пицца'}); setMenuModal('new'); }}>
+                                    <i className="fa-solid fa-plus"></i> Добавить
+                                </button>
+                            </div>
+                            <div className="menu-grid">
+                                {menu.map(item => (
+                                    <div key={item.id} className={`menu-card glass neo ${CAT_MAP[item.category] || ''}`}>
+                                        <div className="card-top">
+                                            <h4>{item.name}</h4>
+                                            <span className="category-tag"><i className={`fa-solid ${CAT_ICON[item.category] || 'fa-utensils'}`} style={{marginRight: 4}}></i>{item.category}</span>
+                                        </div>
+                                        <div className="desc">{item.description}</div>
+                                        <div className="price">{item.price}₽</div>
+                                        <div className="card-actions">
+                                            <button className="btn btn-primary" onClick={() => openEdit(item)}><i className="fa-solid fa-pen"></i> Ред.</button>
+                                            <button className="btn btn-danger" onClick={() => deleteMenuItem(item.id)}><i className="fa-solid fa-trash"></i></button>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
+                    {tab === 'bot' && (
+                        <div>
+                            <div className="panel glass" style={{marginBottom: 16}}>
+                                <div className="panel-header">
+                                    <h2><i className="fa-solid fa-robot" style={{marginRight: 8}}></i>Управление ботом</h2>
+                                </div>
+                                <div style={{padding: 24}}>
+                                    <div style={{display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20}}>
+                                        <div style={{width: 12, height: 12, borderRadius: '50%', background: botStatus.running ? '#40C057' : '#e55', boxShadow: botStatus.running ? '0 0 12px rgba(64,192,87,0.5)' : '0 0 12px rgba(238,85,85,0.5)'}}></div>
+                                        <span style={{fontSize: 18, fontWeight: 600}}>{botStatus.running ? 'Бот работает' : 'Бот остановлен'}</span>
+                                    </div>
+                                    {botStatus.running && (
+                                        <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20}}>
+                                            <div style={{background: 'rgba(64,192,87,0.08)', padding: 14, borderRadius: 12}}>
+                                                <div style={{fontSize: 11, color: '#95D5B2', textTransform: 'uppercase', marginBottom: 4}}>PID</div>
+                                                <div style={{fontSize: 18, fontWeight: 700}}>{botStatus.pid}</div>
+                                            </div>
+                                            <div style={{background: 'rgba(64,192,87,0.08)', padding: 14, borderRadius: 12}}>
+                                                <div style={{fontSize: 11, color: '#95D5B2', textTransform: 'uppercase', marginBottom: 4}}>Время работы</div>
+                                                <div style={{fontSize: 18, fontWeight: 700}}>{botStatus.uptime || '—'}</div>
+                                            </div>
+                                            <div style={{background: 'rgba(64,192,87,0.08)', padding: 14, borderRadius: 12}}>
+                                                <div style={{fontSize: 11, color: '#95D5B2', textTransform: 'uppercase', marginBottom: 4}}>RAM</div>
+                                                <div style={{fontSize: 18, fontWeight: 700}}>{botStatus.ram_mb ? botStatus.ram_mb + ' MB' : '—'}</div>
+                                            </div>
+                                        </div>
+                                    )}
+                                    <div style={{display: 'flex', gap: 10}}>
+                                        {!botStatus.running ? (
+                                            <button className="btn btn-success" onClick={() => botAction('start')} style={{padding: '12px 28px', fontSize: 14}}>
+                                                <i className="fa-solid fa-play"></i> Запустить
+                                            </button>
+                                        ) : (
+                                            <>
+                                                <button className="btn btn-danger" onClick={() => botAction('stop')} style={{padding: '12px 28px', fontSize: 14}}>
+                                                    <i className="fa-solid fa-stop"></i> Остановить
+                                                </button>
+                                                <button className="btn btn-primary" onClick={() => botAction('restart')} style={{padding: '12px 28px', fontSize: 14}}>
+                                                    <i className="fa-solid fa-rotate"></i> Перезапустить
+                                                </button>
+                                            </>
+                                        )}
+                                        <button className="btn btn-ghost" onClick={() => { loadBotStatus(); loadBotLogs(); }} style={{padding: '12px 28px', fontSize: 14}}>
+                                            <i className="fa-solid fa-rotate"></i> Обновить
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="panel glass">
+                                <div className="panel-header">
+                                    <h2><i className="fa-solid fa-terminal" style={{marginRight: 8}}></i>Логи бота</h2>
+                                </div>
+                                <div style={{padding: 16, maxHeight: 400, overflowY: 'auto', fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, color: '#95D5B2'}}>
+                                    {botLogs.length === 0 ? (
+                                        <div style={{textAlign: 'center', padding: 20, opacity: 0.5}}>Нет логов</div>
+                                    ) : (
+                                        botLogs.map((line, i) => <div key={i} style={{padding: '2px 0', borderBottom: '1px solid rgba(119,200,148,0.05)'}}>{line}</div>)
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {orderDetail && (
+                        <div className="modal-overlay" onClick={() => setOrderDetail(null)}>
+                            <div className="modal glass neo" onClick={(e) => e.stopPropagation()}>
+                                <h2><i className="fa-solid fa-box" style={{marginRight: 8}}></i>Заказ #{orderDetail.id}</h2>
+                                <div className="detail-grid">
+                                    <div>
+                                        <div className="order-detail-label">Статус</div>
+                                        <div className="order-detail-value"><span className={`order-badge badge-${orderDetail.status}`}>{STATUS_MAP[orderDetail.status]}</span></div>
+                                    </div>
+                                    <div>
+                                        <div className="order-detail-label">Получение</div>
+                                        <div className="order-detail-value"><i className={`fa-solid ${DELIVERY_ICON[orderDetail.delivery_type]}`} style={{marginRight: 6}}></i>{orderDetail.delivery_type === 'delivery' ? 'Доставка' : 'Самовывоз'}</div>
+                                    </div>
+                                    {orderDetail.address && (
+                                        <div style={{gridColumn: '1/3'}}>
+                                            <div className="order-detail-label">Адрес</div>
+                                            <div className="order-detail-value"><i className="fa-solid fa-location-dot" style={{marginRight: 6}}></i>{orderDetail.address}</div>
+                                        </div>
+                                    )}
+                                    {orderDetail.payment_method && (
+                                        <div>
+                                            <div className="order-detail-label">Оплата</div>
+                                            <div className="order-detail-value"><i className={`fa-solid ${PAYMENT_ICON[orderDetail.payment_method]}`} style={{marginRight: 6}}></i>{PAYMENT_LABEL[orderDetail.payment_method]}</div>
+                                        </div>
+                                    )}
+                                </div>
+                                <div className="order-detail-label">Состав заказа</div>
+                                <div className="order-detail-items">
+                                    {orderDetail.items && orderDetail.items.map((item, idx) => (
+                                        <div key={idx} className="order-detail-row">
+                                            <span>{item.name}</span>
+                                            <span className="order-detail-qty">×{item.quantity}</span>
+                                            <span style={{fontWeight: 600}}>{item.price * item.quantity}₽</span>
+                                        </div>
+                                    ))}
+                                </div>
+                                <div className="order-detail-total">
+                                    <span>Итого</span>
+                                    <span style={{color: '#40C057'}}>{orderDetail.total_price}₽</span>
+                                </div>
+                                <div className="btn-row">
+                                    <button className="btn btn-ghost" onClick={() => setOrderDetail(null)}><i className="fa-solid fa-xmark"></i> Закрыть</button>
+                                    {orderDetail.status !== 'delivered' && orderDetail.status !== 'cancelled' && nextStatus(orderDetail.status, orderDetail.delivery_type) && (
+                                        <button className="btn btn-success" onClick={() => { updateStatus(orderDetail.id, nextStatus(orderDetail.status, orderDetail.delivery_type)); setOrderDetail(null); }}>
+                                            <i className="fa-solid fa-arrow-right"></i>
+                                            {orderDetail.delivery_type === 'pickup' && STATUS_LABEL_PICKUP[nextStatus(orderDetail.status, orderDetail.delivery_type)] || STATUS_MAP[nextStatus(orderDetail.status, orderDetail.delivery_type)]}
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {menuModal !== null && (
+                        <div className="modal-overlay" onClick={() => setMenuModal(null)}>
+                            <div className="modal glass neo" onClick={(e) => e.stopPropagation()}>
+                                <h2><i className={`fa-solid ${menuModal === 'new' ? 'fa-plus' : 'fa-pen'}`} style={{marginRight: 8}}></i>{menuModal === 'new' ? 'Новое блюдо' : 'Редактировать'}</h2>
+                                <input placeholder="Название" value={newItem.name} onChange={e => setNewItem({...newItem, name: e.target.value})} />
+                                <input placeholder="Описание" value={newItem.description} onChange={e => setNewItem({...newItem, description: e.target.value})} />
+                                <input placeholder="Цена (₽)" type="number" value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} />
+                                <select value={newItem.category} onChange={e => setNewItem({...newItem, category: e.target.value})}>
+                                    {['Пицца','Рамен','Салаты','Бургеры','Снэки','Напитки'].map(c => <option key={c} value={c}>{c}</option>)}
+                                </select>
+                                <div className="btn-row">
+                                    <button className="btn btn-ghost" onClick={() => setMenuModal(null)}><i className="fa-solid fa-xmark"></i> Отмена</button>
+                                    <button className="btn btn-success" onClick={saveMenuItem}><i className="fa-solid fa-check"></i> Сохранить</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        ReactDOM.render(<App />, document.getElementById('root'));
+    </script>
+</body>
+</html>

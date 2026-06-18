@@ -1,0 +1,9 @@
+__pycache__/
+*.pyc
+.env
+*.db
+*.log
+.bot.pid
+.bot_start_time
+.vkbottle/
+distill_summary.md
