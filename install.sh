@@ -6,21 +6,16 @@ echo "  Вкусная Доставка — Установка на Termux"
 echo "========================================="
 echo ""
 
-# Обновление пакетов
-echo "[1/6] Обновление пакетов..."
+echo "[1/5] Обновление пакетов..."
 pkg update -y && pkg upgrade -y
 
-# Установка зависимостей
-echo "[2/6] Установка Python и зависимостей..."
+echo "[2/5] Установка Python и зависимостей..."
 pkg install -y python git curl
 
-# Установка Python пакетов
-echo "[3/6] Установка Python пакетов..."
-pip install --upgrade pip
+echo "[3/5] Установка Python пакетов..."
 pip install -r requirements.txt
 
-# Настройка .env
-echo "[4/6] Настройка переменных окружения..."
+echo "[4/5] Настройка .env..."
 if [ ! -f .env ]; then
     cp .env.example .env
     echo "  Файл .env создан из .env.example"
@@ -30,12 +25,7 @@ else
     echo "  Файл .env уже существует"
 fi
 
-# Настройка автозапуска
-echo "[5/6] Настройка автозапуска..."
-bash setup_termux_boot.sh
-
-# Создание скриптов
-echo "[6/6] Создание скриптов..."
+echo "[5/5] Настройка прав..."
 chmod +x start.sh stop.sh status.sh tunnel.sh
 
 echo ""
@@ -46,7 +36,7 @@ echo ""
 echo "Следующие шаги:"
 echo "  1. Отредактируйте .env: nano .env"
 echo "  2. Запустите бота: bash start.sh"
-echo "  3. Или через CRM: откройте http://localhost:8080"
+echo "  3. Проверьте логи: cat bot_out.log"
 echo ""
 echo "Полезные команды:"
 echo "  bash start.sh     — запустить бота"

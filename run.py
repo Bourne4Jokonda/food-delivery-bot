@@ -8,6 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse
 from vkbottle import Bot
 from database.db import init_db, engine, Base
+from init_menu import init_menu
 from contextlib import asynccontextmanager
 
 load_dotenv()
@@ -53,6 +54,7 @@ async def message_handler(event):
 @asynccontextmanager
 async def lifespan(app):
     await init_db()
+    await init_menu()
     asyncio.create_task(run_bot_polling())
     logger.info("Bot (Long Polling) + CRM (port 8080) started")
     yield
