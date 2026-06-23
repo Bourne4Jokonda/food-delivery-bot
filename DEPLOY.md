@@ -31,8 +31,8 @@
 pkg update -y && pkg upgrade -y
 pkg install -y python git
 
-# Клонировать проект
-git clone <репозиторий> ~/food-delivery-bot
+# Скачать проект
+git clone https://github.com/Bourne4Jokonda/food-delivery-bot.git ~/food-delivery-bot
 cd ~/food-delivery-bot
 
 # Установить зависимости
@@ -192,9 +192,10 @@ cat bot_out.log
 ## Порядок действий для клиента (краткий)
 
 1. Установить **Termux** + **Termux:Boot** (из F-Droid)
-2. Скопировать проект в `~/food-delivery-bot`
-3. `pip install -r requirements.txt`
-4. Заполнить `.env` (токены VK и YandexGPT)
-5. `bash start.sh`
-6. Проверить: написать `/start` боту в VK
-7. Настроить автозапуск: `bash setup_termux_boot.sh`
+2. `pkg install -y python git`
+3. `git clone https://github.com/Bourne4Jokonda/food-delivery-bot.git ~/food-delivery-bot`
+4. `cd ~/food-delivery-bot && pip install -r requirements.txt`
+5. Заполнить `.env` (токены VK и YandexGPT): `nano .env`
+6. `bash start.sh`
+7. Проверить: написать `/start` боту в VK
+8. Настроить автозапуск: `bash setup_termux_boot.sh`
