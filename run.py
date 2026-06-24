@@ -6,7 +6,7 @@ import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse
-from vkbottle import Bot, BaseMiddleware
+from vkbottle import Bot
 from database.db import init_db, engine, Base
 from init_menu import init_menu
 from contextlib import asynccontextmanager
@@ -49,11 +49,6 @@ async def start_handler(event):
 async def message_handler(event):
     logger.info(f"msg from {event.from_id} peer={event.peer_id}: {event.text}")
     await handle_message(event)
-
-
-@bot.on.raw_event()
-async def raw_event_handler(event):
-    logger.info(f"RAW event: type={event.type} object={event.object}")
 
 
 @asynccontextmanager

@@ -67,21 +67,21 @@ def get_admin_keyboard():
 
 
 def get_order_action_keyboard(order_id: int):
-    keyboard = Keyboard(one_time=False, inline=True)
+    keyboard = Keyboard(one_time=True, inline=False)
     keyboard.add(Text(f"✅ Принять {order_id}"), color=KeyboardButtonColor.POSITIVE)
     keyboard.add(Text(f"❌ Отклонить {order_id}"), color=KeyboardButtonColor.NEGATIVE)
     return keyboard
 
 
 def get_kitchen_keyboard(order_id: int):
-    keyboard = Keyboard(one_time=False, inline=True)
+    keyboard = Keyboard(one_time=True, inline=False)
     keyboard.add(Text(f"👨‍🍳 Начать {order_id}"), color=KeyboardButtonColor.PRIMARY)
     keyboard.add(Text(f"✅ Готово {order_id}"), color=KeyboardButtonColor.POSITIVE)
     return keyboard
 
 
 def get_courier_keyboard(order_id: int):
-    keyboard = Keyboard(one_time=False, inline=True)
+    keyboard = Keyboard(one_time=True, inline=False)
     keyboard.add(Text(f"🚗 Взять {order_id}"), color=KeyboardButtonColor.PRIMARY)
     keyboard.add(Text(f"✅ Доставлен {order_id}"), color=KeyboardButtonColor.POSITIVE)
     return keyboard
