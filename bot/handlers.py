@@ -54,7 +54,7 @@ STATUS_LABELS_RU = {
 }
 
 
-async def send_vk_message(vk_id: int, message: str, chat_id: int = None):
+async def send_vk_message(vk_id: int, message: str, chat_id: int = None, keyboard=None):
     try:
         params = {"access_token": VK_BOT_TOKEN, "message": message, "random_id": 0, "v": "5.199"}
         if chat_id:
@@ -62,6 +62,8 @@ async def send_vk_message(vk_id: int, message: str, chat_id: int = None):
             params["chat_id"] = real_chat_id
         else:
             params["user_id"] = vk_id
+        if keyboard:
+            params["keyboard"] = keyboard.get_json()
         async with httpx.AsyncClient(timeout=10) as client:
             resp = await client.get("https://api.vk.com/method/messages.send", params=params)
             data = resp.json()
@@ -87,33 +89,40 @@ async def notify_status_change(order_id: int, new_status: OrderStatus):
         await send_vk_message(user.vk_id, f"📦 Заказ #{order_id}: {status_text}")
 
 
-async def notify_staff_by_role(role: UserRole, message: str):
+async def notify_staff_by_role(role: UserRole, message: str, order_id: int = None):
     try:
         chat_id = None
+        keyboard = None
         if role == UserRole.ADMIN:
             chat_id = ADMIN_CHAT_ID
+            if order_id:
+                keyboard = get_order_action_keyboard(order_id)
         elif role == UserRole.KITCHEN:
             chat_id = KITCHEN_CHAT_ID
+            if order_id:
+                keyboard = get_kitchen_keyboard(order_id)
         elif role == UserRole.COURIER:
             chat_id = COURIER_CHAT_ID
+            if order_id:
+                keyboard = get_courier_keyboard(order_id)
         if chat_id:
-            await send_vk_message(0, message, chat_id=chat_id)
+            await send_vk_message(0, message, chat_id=chat_id, keyboard=keyboard)
         else:
             async with async_session() as session:
                 result = await session.execute(select(User).where(User.role == role))
                 users = result.scalars().all()
                 for user in users:
                     await send_vk_message(user.vk_id, message)
-    except Exception:
-        pass
+    except Exception as e:
+        logger.error(f"notify_staff error: {e}")
 
 
 async def notify_kitchen(order_id: int, order_details: str):
-    await notify_staff_by_role(UserRole.KITCHEN, f"👨‍🍳 Новый заказ на кухне #{order_id}!\n\n{order_details}")
+    await notify_staff_by_role(UserRole.KITCHEN, f"👨‍🍳 Новый заказ на кухне #{order_id}!\n\n{order_details}", order_id=order_id)
 
 
 async def notify_courier(order_id: int, order_details: str):
-    await notify_staff_by_role(UserRole.COURIER, f"🚗 Заказ #{order_id} готов к доставке!\n\n{order_details}")
+    await notify_staff_by_role(UserRole.COURIER, f"🚗 Заказ #{order_id} готов к доставке!\n\n{order_details}", order_id=order_id)
 
 
 async def get_order_items_text(order_id: int) -> str:
@@ -542,7 +551,7 @@ async def handle_delivery_choice(event, vk_id: int, text: str):
                     f"Итого: {total}₽"
                 )
                 if ADMIN_CHAT_ID:
-                    await send_vk_message(0, admin_msg, chat_id=ADMIN_CHAT_ID)
+                    await send_vk_message(0, admin_msg, chat_id=ADMIN_CHAT_ID, keyboard=get_order_action_keyboard(order.id))
                 else:
                     await send_vk_message(ADMIN_VK_ID, admin_msg)
             except Exception:
