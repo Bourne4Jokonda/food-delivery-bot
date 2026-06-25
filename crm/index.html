@@ -149,6 +149,9 @@
             const [newItem, setNewItem] = useState({ name: '', description: '', price: '', category: 'Пицца' });
             const [botStatus, setBotStatus] = useState({ running: false, pid: null, uptime: null });
             const [botLogs, setBotLogs] = useState([]);
+            const [staff, setStaff] = useState([]);
+            const [staffModal, setStaffModal] = useState(false);
+            const [newStaff, setNewStaff] = useState({ vk_id: '', role: 'kitchen', name: '' });
 
             const load = useCallback(async () => {
                 try {
@@ -176,7 +179,14 @@
                 } catch (e) { console.error(e); }
             }, []);
 
-            useEffect(() => { load(); loadBotStatus(); const t = setInterval(() => { load(); loadBotStatus(); }, 10000); return () => clearInterval(t); }, [load, loadBotStatus]);
+            const loadStaff = useCallback(async () => {
+                try {
+                    const s = await fetch(`${API}/staff`).then(r => r.json());
+                    setStaff(s);
+                } catch (e) { console.error(e); }
+            }, []);
+
+            useEffect(() => { load(); loadBotStatus(); loadStaff(); const t = setInterval(() => { load(); loadBotStatus(); loadStaff(); }, 10000); return () => clearInterval(t); }, [load, loadBotStatus, loadStaff]);
             useEffect(() => { if (tab === 'bot') { loadBotLogs(); const t = setInterval(loadBotLogs, 5000); return () => clearInterval(t); } }, [tab, loadBotLogs]);
 
             const updateStatus = async (id, status) => {
@@ -228,6 +238,21 @@
                 setTimeout(loadBotStatus, 1000);
             };
 
+            const addStaffMember = async () => {
+                const body = { vk_id: parseInt(newStaff.vk_id), role: newStaff.role, name: newStaff.name };
+                if (isNaN(body.vk_id)) return alert('Введите числовой VK ID');
+                await fetch(`${API}/staff`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                setStaffModal(false);
+                setNewStaff({ vk_id: '', role: 'kitchen', name: '' });
+                loadStaff();
+            };
+
+            const removeStaffMember = async (id) => {
+                if (!confirm('Убрать сотрудника? Он станет клиентом.')) return;
+                await fetch(`${API}/staff/${id}`, { method: 'DELETE' });
+                loadStaff();
+            };
+
             const activeOrders = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled');
 
             return (
@@ -269,6 +294,9 @@
                         </button>
                         <button className={`tab ${tab === 'bot' ? 'active' : ''}`} onClick={() => setTab('bot')}>
                             <i className="fa-solid fa-robot"></i> Бот <span className="badge" style={{background: botStatus.running ? 'rgba(64,192,87,0.25)' : 'rgba(180,60,60,0.2)', color: botStatus.running ? '#40C057' : '#e88'}}>{botStatus.running ? 'ON' : 'OFF'}</span>
+                        </button>
+                        <button className={`tab ${tab === 'staff' ? 'active' : ''}`} onClick={() => setTab('staff')}>
+                            <i className="fa-solid fa-users"></i> Сотрудники
                         </button>
                     </div>
 
@@ -407,6 +435,48 @@
                         </div>
                     )}
 
+                    {tab === 'staff' && (
+                        <div>
+                            <div className="panel glass">
+                                <div className="panel-header">
+                                    <h2><i className="fa-solid fa-users" style={{marginRight: 8}}></i>Сотрудники</h2>
+                                    <button className="btn btn-success" onClick={() => setStaffModal(true)}>
+                                        <i className="fa-solid fa-plus"></i> Добавить
+                                    </button>
+                                </div>
+                                {staff.length === 0 ? (
+                                    <div className="empty"><i className="fa-solid fa-user-slash" style={{fontSize: 32, marginBottom: 12, display: 'block'}}></i>Нет сотрудников. Добавьте кухню и курьера по VK ID.</div>
+                                ) : (
+                                    staff.map(s => (
+                                        <div key={s.id} style={{padding: '16px 24px', borderBottom: '1px solid rgba(119,200,148,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                            <div>
+                                                <div style={{fontWeight: 600, fontSize: 15}}>
+                                                    {s.name || 'Без имени'}
+                                                    <span style={{marginLeft: 8, fontSize: 12, color: '#95D5B2', fontWeight: 400}}>VK ID: {s.vk_id}</span>
+                                                </div>
+                                                <div style={{marginTop: 4}}>
+                                                    <span style={{padding: '3px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600,
+                                                        background: s.role === 'admin' ? 'rgba(64,192,87,0.2)' : s.role === 'kitchen' ? 'rgba(255,193,7,0.2)' : 'rgba(82,183,136,0.2)',
+                                                        color: s.role === 'admin' ? '#40C057' : s.role === 'kitchen' ? '#FFC107' : '#52B788'
+                                                    }}>
+                                                        {s.role === 'admin' ? '👑 Админ' : s.role === 'kitchen' ? '👨‍🍳 Кухня' : '🚗 Курьер'}
+                                                    </span>
+                                                </div>
+                                            </div>
+                                            <button className="btn btn-danger" onClick={() => removeStaffMember(s.id)}>
+                                                <i className="fa-solid fa-trash"></i>
+                                            </button>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                            <div style={{marginTop: 16, padding: 16, background: 'rgba(119,200,148,0.06)', borderRadius: 12, fontSize: 13, color: '#95D5B2', lineHeight: 1.6}}>
+                                <i className="fa-solid fa-info-circle" style={{marginRight: 6}}></i>
+                                Сотрудники получают уведомления в личные сообщения VK. Чтобы узнать VK ID — попросите сотрудника написать боту <code style={{background:'rgba(64,192,87,0.15)', padding:'2px 6px', borderRadius: 4}}>/start</code>, затем посмотрите логи бота.
+                            </div>
+                        </div>
+                    )}
+
                     {orderDetail && (
                         <div className="modal-overlay" onClick={() => setOrderDetail(null)}>
                             <div className="modal glass neo" onClick={(e) => e.stopPropagation()}>
@@ -473,6 +543,25 @@
                                 <div className="btn-row">
                                     <button className="btn btn-ghost" onClick={() => setMenuModal(null)}><i className="fa-solid fa-xmark"></i> Отмена</button>
                                     <button className="btn btn-success" onClick={saveMenuItem}><i className="fa-solid fa-check"></i> Сохранить</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {staffModal && (
+                        <div className="modal-overlay" onClick={() => setStaffModal(false)}>
+                            <div className="modal glass neo" onClick={(e) => e.stopPropagation()}>
+                                <h2><i className="fa-solid fa-user-plus" style={{marginRight: 8}}></i>Добавить сотрудника</h2>
+                                <input placeholder="VK ID (число)" type="number" value={newStaff.vk_id} onChange={e => setNewStaff({...newStaff, vk_id: e.target.value})} />
+                                <input placeholder="Имя (необязательно)" value={newStaff.name} onChange={e => setNewStaff({...newStaff, name: e.target.value})} />
+                                <select value={newStaff.role} onChange={e => setNewStaff({...newStaff, role: e.target.value})}>
+                                    <option value="admin">👑 Админ</option>
+                                    <option value="kitchen">👨‍🍳 Кухня</option>
+                                    <option value="courier">🚗 Курьер</option>
+                                </select>
+                                <div className="btn-row">
+                                    <button className="btn btn-ghost" onClick={() => setStaffModal(false)}><i className="fa-solid fa-xmark"></i> Отмена</button>
+                                    <button className="btn btn-success" onClick={addStaffMember}><i className="fa-solid fa-check"></i> Добавить</button>
                                 </div>
                             </div>
                         </div>

@@ -8,7 +8,7 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 import os, httpx, time
 from database.db import engine, async_session, init_db
-from database.models import Base, Order, OrderItem, MenuItem, OrderStatus, User
+from database.models import Base, Order, OrderItem, MenuItem, OrderStatus, User, UserRole
 
 
 @asynccontextmanager
@@ -38,6 +38,12 @@ class MenuItemCreate(BaseModel):
     description: str = ""
     price: float
     category: str
+
+
+class StaffUpdate(BaseModel):
+    vk_id: int
+    role: str
+    name: str = ""
 
 
 STATUS_LABELS = {
@@ -252,6 +258,56 @@ async def get_week_stats():
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+@app.get("/api/staff")
+async def get_staff():
+    async with async_session() as session:
+        result = await session.execute(
+            select(User).where(User.role.in_([UserRole.ADMIN, UserRole.KITCHEN, UserRole.COURIER]))
+        )
+        users = result.scalars().all()
+        return [
+            {
+                "id": u.id,
+                "vk_id": u.vk_id,
+                "role": u.role.value,
+                "name": u.name or "",
+            }
+            for u in users
+        ]
+
+
+@app.post("/api/staff")
+async def add_staff(staff: StaffUpdate):
+    async with async_session() as session:
+        try:
+            role = UserRole(staff.role)
+        except ValueError:
+            raise HTTPException(status_code=400, detail="Invalid role. Use: admin, kitchen, courier")
+        result = await session.execute(select(User).where(User.vk_id == staff.vk_id))
+        user = result.scalar_one_or_none()
+        if user:
+            user.role = role
+            if staff.name:
+                user.name = staff.name
+        else:
+            user = User(vk_id=staff.vk_id, role=role, name=staff.name)
+            session.add(user)
+        await session.commit()
+        return {"status": "ok", "vk_id": staff.vk_id, "role": role.value}
+
+
+@app.delete("/api/staff/{user_id}")
+async def remove_staff(user_id: int):
+    async with async_session() as session:
+        result = await session.execute(select(User).where(User.id == user_id))
+        user = result.scalar_one_or_none()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        user.role = UserRole.CLIENT
+        await session.commit()
+        return {"status": "ok"}
 
 
 BOT_LOG_FILE = Path(__file__).parent / "bot_out.log"

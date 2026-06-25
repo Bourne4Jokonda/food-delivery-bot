@@ -91,28 +91,19 @@ async def notify_status_change(order_id: int, new_status: OrderStatus):
 
 async def notify_staff_by_role(role: UserRole, message: str, order_id: int = None):
     try:
-        chat_id = None
-        keyboard = None
-        if role == UserRole.ADMIN:
-            chat_id = ADMIN_CHAT_ID
-            if order_id:
-                keyboard = get_order_action_keyboard(order_id)
-        elif role == UserRole.KITCHEN:
-            chat_id = KITCHEN_CHAT_ID
-            if order_id:
-                keyboard = get_kitchen_keyboard(order_id)
-        elif role == UserRole.COURIER:
-            chat_id = COURIER_CHAT_ID
-            if order_id:
-                keyboard = get_courier_keyboard(order_id)
-        if chat_id:
-            await send_vk_message(0, message, chat_id=chat_id, keyboard=keyboard)
-        else:
-            async with async_session() as session:
-                result = await session.execute(select(User).where(User.role == role))
-                users = result.scalars().all()
-                for user in users:
-                    await send_vk_message(user.vk_id, message)
+        async with async_session() as session:
+            result = await session.execute(select(User).where(User.role == role))
+            users = result.scalars().all()
+            for user in users:
+                keyboard = None
+                if order_id:
+                    if role == UserRole.ADMIN:
+                        keyboard = get_order_action_keyboard(order_id)
+                    elif role == UserRole.KITCHEN:
+                        keyboard = get_kitchen_keyboard(order_id)
+                    elif role == UserRole.COURIER:
+                        keyboard = get_courier_keyboard(order_id)
+                await send_vk_message(user.vk_id, message, keyboard=keyboard)
     except Exception as e:
         logger.error(f"notify_staff error: {e}")
 
@@ -552,6 +543,8 @@ async def handle_delivery_choice(event, vk_id: int, text: str):
                 )
                 if ADMIN_CHAT_ID:
                     await send_vk_message(0, admin_msg, chat_id=ADMIN_CHAT_ID, keyboard=get_order_action_keyboard(order.id))
+                else:
+                    await notify_staff_by_role(UserRole.ADMIN, admin_msg, order_id=order.id)
                 else:
                     await send_vk_message(ADMIN_VK_ID, admin_msg)
             except Exception:
