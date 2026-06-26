@@ -5,7 +5,9 @@ import logging
 import uvicorn
 from dotenv import load_dotenv
 from fastapi import FastAPI, Request
-from fastapi.responses import PlainTextResponse
+from fastapi.responses import PlainTextResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
+from pathlib import Path
 from vkbottle import Bot
 from database.db import init_db, engine, Base
 from init_menu import init_menu
@@ -72,6 +74,13 @@ app = FastAPI(lifespan=lifespan)
 
 from api import app as api_app
 app.router.routes = api_app.router.routes + app.router.routes
+
+CRM_DIR = Path(__file__).parent / "crm"
+app.mount("/crm", StaticFiles(directory=str(CRM_DIR)), name="crm")
+
+@app.get("/")
+async def serve_crm():
+    return FileResponse(str(CRM_DIR / "index.html"), media_type="text/html")
 
 
 @app.post("/callback")

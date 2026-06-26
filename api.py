@@ -84,9 +84,6 @@ async def serve_crm():
     return FileResponse(str(html_path), media_type="text/html")
 
 
-app.mount("/crm", StaticFiles(directory=str(Path(__file__).parent / "crm")), name="crm")
-
-
 @app.get("/api/orders")
 async def get_orders():
     async with async_session() as session:
@@ -345,6 +342,9 @@ async def bot_stop():
 @app.post("/api/bot/restart")
 async def bot_restart():
     return {"status": "managed_by_process", "message": "Restart via: bash stop.sh && bash start.sh"}
+
+
+app.mount("/crm", StaticFiles(directory=str(Path(__file__).parent / "crm")), name="crm")
 
 
 @app.get("/api/bot/logs")
