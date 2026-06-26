@@ -1,6 +1,7 @@
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
 from sqlalchemy import select, func
 from pydantic import BaseModel
 from datetime import datetime, timedelta
@@ -81,6 +82,9 @@ async def notify_client(order_id: int, new_status: str):
 async def serve_crm():
     html_path = Path(__file__).parent / "crm" / "index.html"
     return FileResponse(str(html_path), media_type="text/html")
+
+
+app.mount("/crm", StaticFiles(directory=str(Path(__file__).parent / "crm")), name="crm")
 
 
 @app.get("/api/orders")
