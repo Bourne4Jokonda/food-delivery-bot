@@ -3,20 +3,20 @@ const {
   useEffect,
   useCallback
 } = React;
-const isInVK = false;
+const isInVK = !!(window.VKBridge && window.VKBridge.send);
 const API_BASE = window.VK_MINI_APP_CONFIG && window.VK_MINI_APP_CONFIG.API_URL || window.location.origin + '/api';
 if (isInVK) {
   window.VKBridge.send('VKWebAppInit');
 }
 const API = API_BASE;
 const STATUS_MAP = {
-  new: '╨Э╨╛╨▓╤Л╨╣',
-  confirmed: '╨Я╨╛╨┤╤В╨▓╨╡╤А╨╢╨┤╨╡╨╜',
-  preparing: '╨У╨╛╤В╨╛╨▓╨╕╤В╤Б╤П',
-  ready: '╨У╨╛╤В╨╛╨▓',
-  delivering: '╨Т ╨┤╨╛╤Б╤В╨░╨▓╨║╨╡',
-  delivered: '╨Ф╨╛╤Б╤В╨░╨▓╨╗╨╡╨╜',
-  cancelled: '╨Ю╤В╨╝╨╡╨╜╤С╨╜'
+  new: 'Новый',
+  confirmed: 'Подтвержден',
+  preparing: 'Готовится',
+  ready: 'Готов',
+  delivering: 'В доставке',
+  delivered: 'Доставлен',
+  cancelled: 'Отменён'
 };
 const STATUS_FLOW_DELIVERY = ['new', 'confirmed', 'preparing', 'ready', 'delivering', 'delivered'];
 const STATUS_FLOW_PICKUP = ['new', 'confirmed', 'preparing', 'ready', 'delivered'];
@@ -30,28 +30,28 @@ const PAYMENT_ICON = {
   online: 'fa-globe'
 };
 const PAYMENT_LABEL = {
-  card: '╨Ъ╨░╤А╤В╨░',
-  cash: '╨Э╨░╨╗╨╕╤З╨╜╤Л╨╡',
-  online: '╨Ю╨╜╨╗╨░╨╣╨╜'
+  card: 'Карта',
+  cash: 'Наличные',
+  online: 'Онлайн'
 };
 const CAT_MAP = {
-  '╨Я╨╕╤Ж╤Ж╨░': 'cat-pizza',
-  '╨а╨░╨╝╨╡╨╜': 'cat-ramen',
-  '╨б╨░╨╗╨░╤В╤Л': 'cat-salads',
-  '╨С╤Г╤А╨│╨╡╤А╤Л': 'cat-burgers',
-  '╨б╨╜╤Н╨║╨╕': 'cat-snacks',
-  '╨Э╨░╨┐╨╕╤В╨║╨╕': 'cat-drinks'
+  'Пицца': 'cat-pizza',
+  'Рамен': 'cat-ramen',
+  'Салаты': 'cat-salads',
+  'Бургеры': 'cat-burgers',
+  'Снэки': 'cat-snacks',
+  'Напитки': 'cat-drinks'
 };
 const CAT_ICON = {
-  '╨Я╨╕╤Ж╤Ж╨░': 'fa-pizza-slice',
-  '╨а╨░╨╝╨╡╨╜': 'fa-bowl-food',
-  '╨б╨░╨╗╨░╤В╤Л': 'fa-leaf',
-  '╨С╤Г╤А╨│╨╡╤А╤Л': 'fa-burger',
-  '╨б╨╜╤Н╨║╨╕': 'fa-french-fries',
-  '╨Э╨░╨┐╨╕╤В╨║╨╕': 'fa-wine-glass'
+  'Пицца': 'fa-pizza-slice',
+  'Рамен': 'fa-bowl-food',
+  'Салаты': 'fa-leaf',
+  'Бургеры': 'fa-burger',
+  'Снэки': 'fa-french-fries',
+  'Напитки': 'fa-wine-glass'
 };
 const STATUS_LABEL_PICKUP = {
-  delivered: '╨Т╤Л╨┤╨░╤В╤М'
+  delivered: 'Выдать'
 };
 const App = () => {
   const [tab, setTab] = useState('orders');
@@ -71,7 +71,7 @@ const App = () => {
     name: '',
     description: '',
     price: '',
-    category: '╨Я╨╕╤Ж╤Ж╨░'
+    category: 'Пицца'
   });
   const [botStatus, setBotStatus] = useState({
     running: false,
@@ -192,12 +192,12 @@ const App = () => {
       name: '',
       description: '',
       price: '',
-      category: '╨Я╨╕╤Ж╤Ж╨░'
+      category: 'Пицца'
     });
     load();
   };
   const deleteMenuItem = async id => {
-    if (!confirm('╨г╨┤╨░╨╗╨╕╤В╤М ╨▒╨╗╤О╨┤╨╛?')) return;
+    if (!confirm('Удалить блюдо?')) return;
     await fetch(`${API}/menu/${id}`, {
       method: 'DELETE'
     });
@@ -224,7 +224,7 @@ const App = () => {
       role: newStaff.role,
       name: newStaff.name
     };
-    if (isNaN(body.vk_id)) return alert('╨Т╨▓╨╡╨┤╨╕╤В╨╡ ╤З╨╕╤Б╨╗╨╛╨▓╨╛╨╣ VK ID');
+    if (isNaN(body.vk_id)) return alert('Введите числовой VK ID');
     await fetch(`${API}/staff`, {
       method: 'POST',
       headers: {
@@ -241,7 +241,7 @@ const App = () => {
     loadStaff();
   };
   const removeStaffMember = async id => {
-    if (!confirm('╨г╨▒╤А╨░╤В╤М ╤Б╨╛╤В╤А╤Г╨┤╨╜╨╕╨║╨░? ╨Ю╨╜ ╤Б╤В╨░╨╜╨╡╤В ╨║╨╗╨╕╨╡╨╜╤В╨╛╨╝.')) return;
+    if (!confirm('Убрать сотрудника? Он станет клиентом.')) return;
     await fetch(`${API}/staff/${id}`, {
       method: 'DELETE'
     });
@@ -257,12 +257,12 @@ const App = () => {
     style: {
       marginRight: 10
     }
-  }), "╨Т╨║╤Г╤Б╨╜╨░╤П ╨Ф╨╛╤Б╤В╨░╨▓╨║╨░ тАФ CRM"), /*#__PURE__*/React.createElement("button", {
+  }), "Вкусная Доставка — CRM"), /*#__PURE__*/React.createElement("button", {
     className: "refresh",
     onClick: load
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-rotate"
-  }), " ╨Ю╨▒╨╜╨╛╨▓╨╕╤В╤М")), /*#__PURE__*/React.createElement("div", {
+  }), " Обновить")), /*#__PURE__*/React.createElement("div", {
     className: "stats"
   }, /*#__PURE__*/React.createElement("div", {
     className: "stat-card glass neo"
@@ -270,7 +270,7 @@ const App = () => {
     className: "icon c1"
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-receipt"
-  })), /*#__PURE__*/React.createElement("h3", null, "╨Ч╨░╨║╨░╨╖╨╛╨▓ ╤Б╨╡╨│╨╛╨┤╨╜╤П"), /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement("h3", null, "Заказов сегодня"), /*#__PURE__*/React.createElement("div", {
     className: "value c1"
   }, stats.orders)), /*#__PURE__*/React.createElement("div", {
     className: "stat-card glass neo"
@@ -278,46 +278,46 @@ const App = () => {
     className: "icon c2"
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-ruble-sign"
-  })), /*#__PURE__*/React.createElement("h3", null, "╨Т╤Л╤А╤Г╤З╨║╨░ ╤Б╨╡╨│╨╛╨┤╨╜╤П"), /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement("h3", null, "Выручка сегодня"), /*#__PURE__*/React.createElement("div", {
     className: "value c2"
-  }, stats.revenue, "тВ╜")), /*#__PURE__*/React.createElement("div", {
+  }, stats.revenue, "₽")), /*#__PURE__*/React.createElement("div", {
     className: "stat-card glass neo"
   }, /*#__PURE__*/React.createElement("div", {
     className: "icon c3"
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-calendar-week"
-  })), /*#__PURE__*/React.createElement("h3", null, "╨Ч╨░ ╨╜╨╡╨┤╨╡╨╗╤О"), /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement("h3", null, "За неделю"), /*#__PURE__*/React.createElement("div", {
     className: "value c3"
-  }, weekStats.orders, " ╨╖╨░╨║╨░╨╖╨╛╨▓")), /*#__PURE__*/React.createElement("div", {
+  }, weekStats.orders, " заказов")), /*#__PURE__*/React.createElement("div", {
     className: "stat-card glass neo"
   }, /*#__PURE__*/React.createElement("div", {
     className: "icon c4"
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-chart-line"
-  })), /*#__PURE__*/React.createElement("h3", null, "╨Т╤Л╤А╤Г╤З╨║╨░ ╨╖╨░ ╨╜╨╡╨┤╨╡╨╗╤О"), /*#__PURE__*/React.createElement("div", {
+  })), /*#__PURE__*/React.createElement("h3", null, "Выручка за неделю"), /*#__PURE__*/React.createElement("div", {
     className: "value c4"
-  }, weekStats.revenue, "тВ╜"))), /*#__PURE__*/React.createElement("div", {
+  }, weekStats.revenue, "₽"))), /*#__PURE__*/React.createElement("div", {
     className: "tabs"
   }, /*#__PURE__*/React.createElement("button", {
     className: `tab ${tab === 'orders' ? 'active' : ''}`,
     onClick: () => setTab('orders')
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-box"
-  }), " ╨Ч╨░╨║╨░╨╖╤Л ", /*#__PURE__*/React.createElement("span", {
+  }), " Заказы ", /*#__PURE__*/React.createElement("span", {
     className: "badge"
   }, activeOrders.length)), /*#__PURE__*/React.createElement("button", {
     className: `tab ${tab === 'menu' ? 'active' : ''}`,
     onClick: () => setTab('menu')
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-utensils"
-  }), " ╨Ь╨╡╨╜╤О ", /*#__PURE__*/React.createElement("span", {
+  }), " Меню ", /*#__PURE__*/React.createElement("span", {
     className: "badge"
   }, menu.length)), /*#__PURE__*/React.createElement("button", {
     className: `tab ${tab === 'bot' ? 'active' : ''}`,
     onClick: () => setTab('bot')
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-robot"
-  }), " ╨С╨╛╤В ", /*#__PURE__*/React.createElement("span", {
+  }), " Бот ", /*#__PURE__*/React.createElement("span", {
     className: "badge",
     style: {
       background: botStatus.running ? 'rgba(64,192,87,0.25)' : 'rgba(180,60,60,0.2)',
@@ -328,11 +328,11 @@ const App = () => {
     onClick: () => setTab('staff')
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-users"
-  }), " ╨б╨╛╤В╤А╤Г╨┤╨╜╨╕╨║╨╕")), tab === 'orders' && /*#__PURE__*/React.createElement("div", {
+  }), " Сотрудники")), tab === 'orders' && /*#__PURE__*/React.createElement("div", {
     className: "panel glass"
   }, /*#__PURE__*/React.createElement("div", {
     className: "panel-header"
-  }, /*#__PURE__*/React.createElement("h2", null, "╨Ч╨░╨║╨░╨╖╤Л")), orders.length === 0 ? /*#__PURE__*/React.createElement("div", {
+  }, /*#__PURE__*/React.createElement("h2", null, "Заказы")), orders.length === 0 ? /*#__PURE__*/React.createElement("div", {
     className: "empty"
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-inbox",
@@ -341,7 +341,7 @@ const App = () => {
       marginBottom: 12,
       display: 'block'
     }
-  }), "╨Э╨╡╤В ╨╖╨░╨║╨░╨╖╨╛╨▓") : orders.map(order => /*#__PURE__*/React.createElement("div", {
+  }), "Нет заказов") : orders.map(order => /*#__PURE__*/React.createElement("div", {
     key: order.id,
     className: "order-item",
     onClick: () => openOrderDetail(order.id)
@@ -360,7 +360,7 @@ const App = () => {
     className: "order-meta"
   }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
     className: `fa-solid ${DELIVERY_ICON[order.delivery_type]}`
-  }), " ", order.delivery_type === 'delivery' ? '╨Ф╨╛╤Б╤В╨░╨▓╨║╨░' : '╨б╨░╨╝╨╛╨▓╤Л╨▓╨╛╨╖'), order.address && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
+  }), " ", order.delivery_type === 'delivery' ? 'Доставка' : 'Самовывоз'), order.address && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-location-dot"
   }), " ", order.address), order.payment_method && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
     className: `fa-solid ${PAYMENT_ICON[order.payment_method]}`
@@ -372,7 +372,7 @@ const App = () => {
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "order-price"
-  }, order.total_price, "тВ╜"), /*#__PURE__*/React.createElement("div", {
+  }, order.total_price, "₽"), /*#__PURE__*/React.createElement("div", {
     className: "actions"
   }, order.status !== 'delivered' && order.status !== 'cancelled' && nextStatus(order.status, order.delivery_type) && /*#__PURE__*/React.createElement("button", {
     className: "btn btn-success",
@@ -401,20 +401,20 @@ const App = () => {
     style: {
       marginRight: 8
     }
-  }), "╨Ь╨╡╨╜╤О"), /*#__PURE__*/React.createElement("button", {
+  }), "Меню"), /*#__PURE__*/React.createElement("button", {
     className: "btn btn-success",
     onClick: () => {
       setNewItem({
         name: '',
         description: '',
         price: '',
-        category: '╨Я╨╕╤Ж╤Ж╨░'
+        category: 'Пицца'
       });
       setMenuModal('new');
     }
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-plus"
-  }), " ╨Ф╨╛╨▒╨░╨▓╨╕╤В╤М")), /*#__PURE__*/React.createElement("div", {
+  }), " Добавить")), /*#__PURE__*/React.createElement("div", {
     className: "menu-grid"
   }, menu.map(item => /*#__PURE__*/React.createElement("div", {
     key: item.id,
@@ -432,14 +432,14 @@ const App = () => {
     className: "desc"
   }, item.description), /*#__PURE__*/React.createElement("div", {
     className: "price"
-  }, item.price, "тВ╜"), /*#__PURE__*/React.createElement("div", {
+  }, item.price, "₽"), /*#__PURE__*/React.createElement("div", {
     className: "card-actions"
   }, /*#__PURE__*/React.createElement("button", {
     className: "btn btn-primary",
     onClick: () => openEdit(item)
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-pen"
-  }), " ╨а╨╡╨┤."), /*#__PURE__*/React.createElement("button", {
+  }), " Ред."), /*#__PURE__*/React.createElement("button", {
     className: "btn btn-danger",
     onClick: () => deleteMenuItem(item.id)
   }, /*#__PURE__*/React.createElement("i", {
@@ -456,7 +456,7 @@ const App = () => {
     style: {
       marginRight: 8
     }
-  }), "╨г╨┐╤А╨░╨▓╨╗╨╡╨╜╨╕╨╡ ╨▒╨╛╤В╨╛╨╝")), /*#__PURE__*/React.createElement("div", {
+  }), "Управление ботом")), /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 24
     }
@@ -480,7 +480,7 @@ const App = () => {
       fontSize: 18,
       fontWeight: 600
     }
-  }, botStatus.running ? '╨С╨╛╤В ╤А╨░╨▒╨╛╤В╨░╨╡╤В' : '╨С╨╛╤В ╨╛╤Б╤В╨░╨╜╨╛╨▓╨╗╨╡╨╜')), botStatus.running && /*#__PURE__*/React.createElement("div", {
+  }, botStatus.running ? 'Бот работает' : 'Бот остановлен')), botStatus.running && /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'grid',
       gridTemplateColumns: '1fr 1fr 1fr',
@@ -518,12 +518,12 @@ const App = () => {
       textTransform: 'uppercase',
       marginBottom: 4
     }
-  }, "╨Т╤А╨╡╨╝╤П ╤А╨░╨▒╨╛╤В╤Л"), /*#__PURE__*/React.createElement("div", {
+  }, "Время работы"), /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 18,
       fontWeight: 700
     }
-  }, botStatus.uptime || 'тАФ')), /*#__PURE__*/React.createElement("div", {
+  }, botStatus.uptime || '—')), /*#__PURE__*/React.createElement("div", {
     style: {
       background: 'rgba(64,192,87,0.08)',
       padding: 14,
@@ -541,7 +541,7 @@ const App = () => {
       fontSize: 18,
       fontWeight: 700
     }
-  }, botStatus.ram_mb ? botStatus.ram_mb + ' MB' : 'тАФ'))), /*#__PURE__*/React.createElement("div", {
+  }, botStatus.ram_mb ? botStatus.ram_mb + ' MB' : '—'))), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
       gap: 10
@@ -555,7 +555,7 @@ const App = () => {
     }
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-play"
-  }), " ╨Ч╨░╨┐╤Г╤Б╤В╨╕╤В╤М") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
+  }), " Запустить") : /*#__PURE__*/React.createElement(React.Fragment, null, /*#__PURE__*/React.createElement("button", {
     className: "btn btn-danger",
     onClick: () => botAction('stop'),
     style: {
@@ -564,7 +564,7 @@ const App = () => {
     }
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-stop"
-  }), " ╨Ю╤Б╤В╨░╨╜╨╛╨▓╨╕╤В╤М"), /*#__PURE__*/React.createElement("button", {
+  }), " Остановить"), /*#__PURE__*/React.createElement("button", {
     className: "btn btn-primary",
     onClick: () => botAction('restart'),
     style: {
@@ -573,7 +573,7 @@ const App = () => {
     }
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-rotate"
-  }), " ╨Я╨╡╤А╨╡╨╖╨░╨┐╤Г╤Б╤В╨╕╤В╤М")), /*#__PURE__*/React.createElement("button", {
+  }), " Перезапустить")), /*#__PURE__*/React.createElement("button", {
     className: "btn btn-ghost",
     onClick: () => {
       loadBotStatus();
@@ -585,7 +585,7 @@ const App = () => {
     }
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-rotate"
-  }), " ╨Ю╨▒╨╜╨╛╨▓╨╕╤В╤М")))), /*#__PURE__*/React.createElement("div", {
+  }), " Обновить")))), /*#__PURE__*/React.createElement("div", {
     className: "panel glass"
   }, /*#__PURE__*/React.createElement("div", {
     className: "panel-header"
@@ -594,7 +594,7 @@ const App = () => {
     style: {
       marginRight: 8
     }
-  }), "╨Ы╨╛╨│╨╕ ╨▒╨╛╤В╨░")), /*#__PURE__*/React.createElement("div", {
+  }), "Логи бота")), /*#__PURE__*/React.createElement("div", {
     style: {
       padding: 16,
       maxHeight: 400,
@@ -610,7 +610,7 @@ const App = () => {
       padding: 20,
       opacity: 0.5
     }
-  }, "╨Э╨╡╤В ╨╗╨╛╨│╨╛╨▓") : botLogs.map((line, i) => /*#__PURE__*/React.createElement("div", {
+  }, "Нет логов") : botLogs.map((line, i) => /*#__PURE__*/React.createElement("div", {
     key: i,
     style: {
       padding: '2px 0',
@@ -625,12 +625,12 @@ const App = () => {
     style: {
       marginRight: 8
     }
-  }), "╨б╨╛╤В╤А╤Г╨┤╨╜╨╕╨║╨╕"), /*#__PURE__*/React.createElement("button", {
+  }), "Сотрудники"), /*#__PURE__*/React.createElement("button", {
     className: "btn btn-success",
     onClick: () => setStaffModal(true)
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-plus"
-  }), " ╨Ф╨╛╨▒╨░╨▓╨╕╤В╤М")), staff.length === 0 ? /*#__PURE__*/React.createElement("div", {
+  }), " Добавить")), staff.length === 0 ? /*#__PURE__*/React.createElement("div", {
     className: "empty"
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-user-slash",
@@ -639,7 +639,7 @@ const App = () => {
       marginBottom: 12,
       display: 'block'
     }
-  }), "╨Э╨╡╤В ╤Б╨╛╤В╤А╤Г╨┤╨╜╨╕╨║╨╛╨▓. ╨Ф╨╛╨▒╨░╨▓╤М╤В╨╡ ╨║╤Г╤Е╨╜╤О ╨╕ ╨║╤Г╤А╤М╨╡╤А╨░ ╨┐╨╛ VK ID.") : staff.map(s => /*#__PURE__*/React.createElement("div", {
+  }), "Нет сотрудников. Добавьте кухню и курьера по VK ID.") : staff.map(s => /*#__PURE__*/React.createElement("div", {
     key: s.id,
     style: {
       padding: '16px 24px',
@@ -653,7 +653,7 @@ const App = () => {
       fontWeight: 600,
       fontSize: 15
     }
-  }, s.name || '╨С╨╡╨╖ ╨╕╨╝╨╡╨╜╨╕', /*#__PURE__*/React.createElement("span", {
+  }, s.name || 'Без имени', /*#__PURE__*/React.createElement("span", {
     style: {
       marginLeft: 8,
       fontSize: 12,
@@ -673,7 +673,7 @@ const App = () => {
       background: s.role === 'admin' ? 'rgba(64,192,87,0.2)' : s.role === 'kitchen' ? 'rgba(255,193,7,0.2)' : 'rgba(82,183,136,0.2)',
       color: s.role === 'admin' ? '#40C057' : s.role === 'kitchen' ? '#FFC107' : '#52B788'
     }
-  }, s.role === 'admin' ? 'ЁЯСС ╨Р╨┤╨╝╨╕╨╜' : s.role === 'kitchen' ? 'ЁЯСитАНЁЯН│ ╨Ъ╤Г╤Е╨╜╤П' : 'ЁЯЪЧ ╨Ъ╤Г╤А╤М╨╡╤А'))), /*#__PURE__*/React.createElement("button", {
+  }, s.role === 'admin' ? '👑 Админ' : s.role === 'kitchen' ? '👨‍🍳 Кухня' : '🚗 Курьер'))), /*#__PURE__*/React.createElement("button", {
     className: "btn btn-danger",
     onClick: () => removeStaffMember(s.id)
   }, /*#__PURE__*/React.createElement("i", {
@@ -693,13 +693,13 @@ const App = () => {
     style: {
       marginRight: 6
     }
-  }), "╨б╨╛╤В╤А╤Г╨┤╨╜╨╕╨║╨╕ ╨┐╨╛╨╗╤Г╤З╨░╤О╤В ╤Г╨▓╨╡╨┤╨╛╨╝╨╗╨╡╨╜╨╕╤П ╨▓ ╨╗╨╕╤З╨╜╤Л╨╡ ╤Б╨╛╨╛╨▒╤Й╨╡╨╜╨╕╤П VK. ╨з╤В╨╛╨▒╤Л ╤Г╨╖╨╜╨░╤В╤М VK ID тАФ ╨┐╨╛╨┐╤А╨╛╤Б╨╕╤В╨╡ ╤Б╨╛╤В╤А╤Г╨┤╨╜╨╕╨║╨░ ╨╜╨░╨┐╨╕╤Б╨░╤В╤М ╨▒╨╛╤В╤Г ", /*#__PURE__*/React.createElement("code", {
+  }), "Сотрудники получают уведомления в личные сообщения VK. Чтобы узнать VK ID — попросите сотрудника написать боту ", /*#__PURE__*/React.createElement("code", {
     style: {
       background: 'rgba(64,192,87,0.15)',
       padding: '2px 6px',
       borderRadius: 4
     }
-  }, "/start"), ", ╨╖╨░╤В╨╡╨╝ ╨┐╨╛╤Б╨╝╨╛╤В╤А╨╕╤В╨╡ ╨╗╨╛╨│╨╕ ╨▒╨╛╤В╨░.")), orderDetail && /*#__PURE__*/React.createElement("div", {
+  }, "/start"), ", затем посмотрите логи бота.")), orderDetail && /*#__PURE__*/React.createElement("div", {
     className: "modal-overlay",
     onClick: () => setOrderDetail(null)
   }, /*#__PURE__*/React.createElement("div", {
@@ -710,30 +710,30 @@ const App = () => {
     style: {
       marginRight: 8
     }
-  }), "╨Ч╨░╨║╨░╨╖ #", orderDetail.id), /*#__PURE__*/React.createElement("div", {
+  }), "Заказ #", orderDetail.id), /*#__PURE__*/React.createElement("div", {
     className: "detail-grid"
   }, /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "order-detail-label"
-  }, "╨б╤В╨░╤В╤Г╤Б"), /*#__PURE__*/React.createElement("div", {
+  }, "Статус"), /*#__PURE__*/React.createElement("div", {
     className: "order-detail-value"
   }, /*#__PURE__*/React.createElement("span", {
     className: `order-badge badge-${orderDetail.status}`
   }, STATUS_MAP[orderDetail.status]))), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "order-detail-label"
-  }, "╨Я╨╛╨╗╤Г╤З╨╡╨╜╨╕╨╡"), /*#__PURE__*/React.createElement("div", {
+  }, "Получение"), /*#__PURE__*/React.createElement("div", {
     className: "order-detail-value"
   }, /*#__PURE__*/React.createElement("i", {
     className: `fa-solid ${DELIVERY_ICON[orderDetail.delivery_type]}`,
     style: {
       marginRight: 6
     }
-  }), orderDetail.delivery_type === 'delivery' ? '╨Ф╨╛╤Б╤В╨░╨▓╨║╨░' : '╨б╨░╨╝╨╛╨▓╤Л╨▓╨╛╨╖')), orderDetail.address && /*#__PURE__*/React.createElement("div", {
+  }), orderDetail.delivery_type === 'delivery' ? 'Доставка' : 'Самовывоз')), orderDetail.address && /*#__PURE__*/React.createElement("div", {
     style: {
       gridColumn: '1/3'
     }
   }, /*#__PURE__*/React.createElement("div", {
     className: "order-detail-label"
-  }, "╨Р╨┤╤А╨╡╤Б"), /*#__PURE__*/React.createElement("div", {
+  }, "Адрес"), /*#__PURE__*/React.createElement("div", {
     className: "order-detail-value"
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-location-dot",
@@ -742,7 +742,7 @@ const App = () => {
     }
   }), orderDetail.address)), orderDetail.payment_method && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "order-detail-label"
-  }, "╨Ю╨┐╨╗╨░╤В╨░"), /*#__PURE__*/React.createElement("div", {
+  }, "Оплата"), /*#__PURE__*/React.createElement("div", {
     className: "order-detail-value"
   }, /*#__PURE__*/React.createElement("i", {
     className: `fa-solid ${PAYMENT_ICON[orderDetail.payment_method]}`,
@@ -751,31 +751,31 @@ const App = () => {
     }
   }), PAYMENT_LABEL[orderDetail.payment_method]))), /*#__PURE__*/React.createElement("div", {
     className: "order-detail-label"
-  }, "╨б╨╛╤Б╤В╨░╨▓ ╨╖╨░╨║╨░╨╖╨░"), /*#__PURE__*/React.createElement("div", {
+  }, "Состав заказа"), /*#__PURE__*/React.createElement("div", {
     className: "order-detail-items"
   }, orderDetail.items && orderDetail.items.map((item, idx) => /*#__PURE__*/React.createElement("div", {
     key: idx,
     className: "order-detail-row"
   }, /*#__PURE__*/React.createElement("span", null, item.name), /*#__PURE__*/React.createElement("span", {
     className: "order-detail-qty"
-  }, "├Ч", item.quantity), /*#__PURE__*/React.createElement("span", {
+  }, "×", item.quantity), /*#__PURE__*/React.createElement("span", {
     style: {
       fontWeight: 600
     }
-  }, item.price * item.quantity, "тВ╜")))), /*#__PURE__*/React.createElement("div", {
+  }, item.price * item.quantity, "₽")))), /*#__PURE__*/React.createElement("div", {
     className: "order-detail-total"
-  }, /*#__PURE__*/React.createElement("span", null, "╨Ш╤В╨╛╨│╨╛"), /*#__PURE__*/React.createElement("span", {
+  }, /*#__PURE__*/React.createElement("span", null, "Итого"), /*#__PURE__*/React.createElement("span", {
     style: {
       color: '#40C057'
     }
-  }, orderDetail.total_price, "тВ╜")), /*#__PURE__*/React.createElement("div", {
+  }, orderDetail.total_price, "₽")), /*#__PURE__*/React.createElement("div", {
     className: "btn-row"
   }, /*#__PURE__*/React.createElement("button", {
     className: "btn btn-ghost",
     onClick: () => setOrderDetail(null)
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-xmark"
-  }), " ╨Ч╨░╨║╤А╤Л╤В╤М"), orderDetail.status !== 'delivered' && orderDetail.status !== 'cancelled' && nextStatus(orderDetail.status, orderDetail.delivery_type) && /*#__PURE__*/React.createElement("button", {
+  }), " Закрыть"), orderDetail.status !== 'delivered' && orderDetail.status !== 'cancelled' && nextStatus(orderDetail.status, orderDetail.delivery_type) && /*#__PURE__*/React.createElement("button", {
     className: "btn btn-success",
     onClick: () => {
       updateStatus(orderDetail.id, nextStatus(orderDetail.status, orderDetail.delivery_type));
@@ -794,22 +794,22 @@ const App = () => {
     style: {
       marginRight: 8
     }
-  }), menuModal === 'new' ? '╨Э╨╛╨▓╨╛╨╡ ╨▒╨╗╤О╨┤╨╛' : '╨а╨╡╨┤╨░╨║╤В╨╕╤А╨╛╨▓╨░╤В╤М'), /*#__PURE__*/React.createElement("input", {
-    placeholder: "╨Э╨░╨╖╨▓╨░╨╜╨╕╨╡",
+  }), menuModal === 'new' ? 'Новое блюдо' : 'Редактировать'), /*#__PURE__*/React.createElement("input", {
+    placeholder: "Название",
     value: newItem.name,
     onChange: e => setNewItem({
       ...newItem,
       name: e.target.value
     })
   }), /*#__PURE__*/React.createElement("input", {
-    placeholder: "╨Ю╨┐╨╕╤Б╨░╨╜╨╕╨╡",
+    placeholder: "Описание",
     value: newItem.description,
     onChange: e => setNewItem({
       ...newItem,
       description: e.target.value
     })
   }), /*#__PURE__*/React.createElement("input", {
-    placeholder: "╨ж╨╡╨╜╨░ (тВ╜)",
+    placeholder: "Цена (₽)",
     type: "number",
     value: newItem.price,
     onChange: e => setNewItem({
@@ -822,7 +822,7 @@ const App = () => {
       ...newItem,
       category: e.target.value
     })
-  }, ['╨Я╨╕╤Ж╤Ж╨░', '╨а╨░╨╝╨╡╨╜', '╨б╨░╨╗╨░╤В╤Л', '╨С╤Г╤А╨│╨╡╤А╤Л', '╨б╨╜╤Н╨║╨╕', '╨Э╨░╨┐╨╕╤В╨║╨╕'].map(c => /*#__PURE__*/React.createElement("option", {
+  }, ['Пицца', 'Рамен', 'Салаты', 'Бургеры', 'Снэки', 'Напитки'].map(c => /*#__PURE__*/React.createElement("option", {
     key: c,
     value: c
   }, c))), /*#__PURE__*/React.createElement("div", {
@@ -832,12 +832,12 @@ const App = () => {
     onClick: () => setMenuModal(null)
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-xmark"
-  }), " ╨Ю╤В╨╝╨╡╨╜╨░"), /*#__PURE__*/React.createElement("button", {
+  }), " Отмена"), /*#__PURE__*/React.createElement("button", {
     className: "btn btn-success",
     onClick: saveMenuItem
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-check"
-  }), " ╨б╨╛╤Е╤А╨░╨╜╨╕╤В╤М")))), staffModal && /*#__PURE__*/React.createElement("div", {
+  }), " Сохранить")))), staffModal && /*#__PURE__*/React.createElement("div", {
     className: "modal-overlay",
     onClick: () => setStaffModal(false)
   }, /*#__PURE__*/React.createElement("div", {
@@ -848,8 +848,8 @@ const App = () => {
     style: {
       marginRight: 8
     }
-  }), "╨Ф╨╛╨▒╨░╨▓╨╕╤В╤М ╤Б╨╛╤В╤А╤Г╨┤╨╜╨╕╨║╨░"), /*#__PURE__*/React.createElement("input", {
-    placeholder: "VK ID (╤З╨╕╤Б╨╗╨╛)",
+  }), "Добавить сотрудника"), /*#__PURE__*/React.createElement("input", {
+    placeholder: "VK ID (число)",
     type: "number",
     value: newStaff.vk_id,
     onChange: e => setNewStaff({
@@ -857,7 +857,7 @@ const App = () => {
       vk_id: e.target.value
     })
   }), /*#__PURE__*/React.createElement("input", {
-    placeholder: "╨Ш╨╝╤П (╨╜╨╡╨╛╨▒╤П╨╖╨░╤В╨╡╨╗╤М╨╜╨╛)",
+    placeholder: "Имя (необязательно)",
     value: newStaff.name,
     onChange: e => setNewStaff({
       ...newStaff,
@@ -871,22 +871,22 @@ const App = () => {
     })
   }, /*#__PURE__*/React.createElement("option", {
     value: "admin"
-  }, "ЁЯСС ╨Р╨┤╨╝╨╕╨╜"), /*#__PURE__*/React.createElement("option", {
+  }, "👑 Админ"), /*#__PURE__*/React.createElement("option", {
     value: "kitchen"
-  }, "ЁЯСитАНЁЯН│ ╨Ъ╤Г╤Е╨╜╤П"), /*#__PURE__*/React.createElement("option", {
+  }, "👨‍🍳 Кухня"), /*#__PURE__*/React.createElement("option", {
     value: "courier"
-  }, "ЁЯЪЧ ╨Ъ╤Г╤А╤М╨╡╤А")), /*#__PURE__*/React.createElement("div", {
+  }, "🚗 Курьер")), /*#__PURE__*/React.createElement("div", {
     className: "btn-row"
   }, /*#__PURE__*/React.createElement("button", {
     className: "btn btn-ghost",
     onClick: () => setStaffModal(false)
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-xmark"
-  }), " ╨Ю╤В╨╝╨╡╨╜╨░"), /*#__PURE__*/React.createElement("button", {
+  }), " Отмена"), /*#__PURE__*/React.createElement("button", {
     className: "btn btn-success",
     onClick: addStaffMember
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-check"
-  }), " ╨Ф╨╛╨▒╨░╨▓╨╕╤В╤М")))));
+  }), " Добавить")))));
 };
 ReactDOM.render(/*#__PURE__*/React.createElement(App, null), document.getElementById('root'));
