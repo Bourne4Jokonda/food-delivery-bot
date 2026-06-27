@@ -15,7 +15,13 @@ const authHeaders = () => {
 };
 const apiFetch = (url, opts = {}) => {
   const h = { ...authHeaders(), ...(opts.headers || {}) };
-  return fetch(url, { ...opts, headers: h });
+  return fetch(url, { ...opts, headers: h }).then(r => {
+    if (r.status === 401) {
+      localStorage.removeItem('crm_api_key');
+      location.reload();
+    }
+    return r;
+  });
 };
 const STATUS_MAP = {
   new: 'Новый',
