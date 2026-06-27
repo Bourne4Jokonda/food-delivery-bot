@@ -253,6 +253,19 @@ async def handle_message(event):
 
         elif vk_id in pending_orders and pending_orders[vk_id].get("delivery_type") == "delivery" and "address" not in pending_orders[vk_id]:
             pending_orders[vk_id]["address"] = raw.strip()
+            user = await get_or_create_user(vk_id, session)
+            if user.phone:
+                await event.answer("Как будете оплачивать?", keyboard=get_payment_keyboard())
+            else:
+                pending_orders[vk_id]["awaiting_phone"] = True
+                await event.answer("Укажите номер телефона для связи:")
+
+        elif vk_id in pending_orders and pending_orders[vk_id].get("awaiting_phone"):
+            phone = raw.strip()
+            user = await get_or_create_user(vk_id, session)
+            user.phone = phone
+            await session.commit()
+            del pending_orders[vk_id]["awaiting_phone"]
             await event.answer("Как будете оплачивать?", keyboard=get_payment_keyboard())
 
         elif "очистить" in text:
@@ -560,9 +573,9 @@ async def handle_delivery_choice(event, vk_id: int, text: str):
                 f"Итого: {total}₽\n\n"
             )
             if delivery_type == "pickup":
-                confirm_msg += "Ждём вас в ресторане!"
+                confirm_msg += "Ждём вас в ресторане в течение 15-20 минут!"
             else:
-                confirm_msg += "Ожидайте доставку в течение 30-60 минут!"
+                confirm_msg += "🚗 Ожидайте доставку в течение 30-60 минут!"
 
             pending_notify[vk_id] = order.id
             await event.answer(confirm_msg + "\n\nКак уведомлять о статусе заказа?", keyboard=get_notify_keyboard())
@@ -585,8 +598,8 @@ async def handle_delivery_choice(event, vk_id: int, text: str):
                     await send_vk_message(0, admin_msg, chat_id=ADMIN_CHAT_ID, keyboard=get_order_action_keyboard(order.id))
                 else:
                     await notify_staff_by_role(UserRole.ADMIN, admin_msg, order_id=order.id)
-            except Exception:
-                pass
+            except Exception as e:
+                logger.error(f"Admin notification failed for order #{order.id}: {e}")
     else:
         await event.answer("Выберите способ оплаты:", keyboard=get_payment_keyboard())
 
