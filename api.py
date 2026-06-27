@@ -1,4 +1,4 @@
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Depends, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
@@ -10,6 +10,20 @@ from contextlib import asynccontextmanager
 import os, httpx, time
 from database.db import engine, async_session, init_db
 from database.models import Base, Order, OrderItem, MenuItem, OrderStatus, User, UserRole
+
+
+CRM_API_KEY = os.getenv("CRM_API_KEY", "")
+
+
+async def verify_api_key(request: Request):
+    if not CRM_API_KEY:
+        return
+    key = request.headers.get("X-API-Key", "")
+    if key != CRM_API_KEY:
+        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+
+
+auth_dep = Depends(verify_api_key)
 
 
 @asynccontextmanager
@@ -45,6 +59,19 @@ class StaffUpdate(BaseModel):
     vk_id: int
     role: str
     name: str = ""
+
+
+class AuthCheck(BaseModel):
+    key: str
+
+
+@app.post("/api/auth/verify")
+async def verify_auth(body: AuthCheck):
+    if not CRM_API_KEY:
+        return {"status": "no_key_configured"}
+    if body.key == CRM_API_KEY:
+        return {"status": "ok"}
+    raise HTTPException(status_code=401, detail="Invalid API key")
 
 
 STATUS_LABELS = {
@@ -84,7 +111,7 @@ async def serve_crm():
     return FileResponse(str(html_path), media_type="text/html")
 
 
-@app.get("/api/orders")
+@app.get("/api/orders", dependencies=[auth_dep])
 async def get_orders():
     async with async_session() as session:
         result = await session.execute(
@@ -106,7 +133,7 @@ async def get_orders():
         ]
 
 
-@app.get("/api/orders/{order_id}")
+@app.get("/api/orders/{order_id}", dependencies=[auth_dep])
 async def get_order(order_id: int):
     async with async_session() as session:
         result = await session.execute(select(Order).where(Order.id == order_id))
@@ -134,7 +161,7 @@ async def get_order(order_id: int):
         }
 
 
-@app.patch("/api/orders/{order_id}/status")
+@app.patch("/api/orders/{order_id}/status", dependencies=[auth_dep])
 async def update_order_status(order_id: int, update: StatusUpdate):
     async with async_session() as session:
         result = await session.execute(select(Order).where(Order.id == order_id))
@@ -152,7 +179,7 @@ async def update_order_status(order_id: int, update: StatusUpdate):
         return {"status": "ok"}
 
 
-@app.get("/api/menu")
+@app.get("/api/menu", dependencies=[auth_dep])
 async def get_menu():
     async with async_session() as session:
         result = await session.execute(select(MenuItem).where(MenuItem.available == 1))
@@ -169,7 +196,7 @@ async def get_menu():
         ]
 
 
-@app.post("/api/menu")
+@app.post("/api/menu", dependencies=[auth_dep])
 async def create_menu_item(item: MenuItemCreate):
     async with async_session() as session:
         new_item = MenuItem(
@@ -183,7 +210,7 @@ async def create_menu_item(item: MenuItemCreate):
         return {"id": new_item.id, "status": "created"}
 
 
-@app.patch("/api/menu/{item_id}")
+@app.patch("/api/menu/{item_id}", dependencies=[auth_dep])
 async def update_menu_item(item_id: int, item: MenuItemCreate):
     async with async_session() as session:
         result = await session.execute(select(MenuItem).where(MenuItem.id == item_id))
@@ -199,7 +226,7 @@ async def update_menu_item(item_id: int, item: MenuItemCreate):
         return {"status": "updated"}
 
 
-@app.delete("/api/menu/{item_id}")
+@app.delete("/api/menu/{item_id}", dependencies=[auth_dep])
 async def delete_menu_item(item_id: int):
     async with async_session() as session:
         result = await session.execute(select(MenuItem).where(MenuItem.id == item_id))
@@ -212,7 +239,7 @@ async def delete_menu_item(item_id: int):
         return {"status": "deleted"}
 
 
-@app.get("/api/stats")
+@app.get("/api/stats", dependencies=[auth_dep])
 async def get_stats():
     async with async_session() as session:
         today = datetime.utcnow().replace(hour=0, minute=0, second=0, microsecond=0)
@@ -234,7 +261,7 @@ async def get_stats():
         }
 
 
-@app.get("/api/stats/week")
+@app.get("/api/stats/week", dependencies=[auth_dep])
 async def get_week_stats():
     async with async_session() as session:
         week_ago = datetime.utcnow() - timedelta(days=7)
@@ -261,7 +288,7 @@ if __name__ == "__main__":
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 
-@app.get("/api/staff")
+@app.get("/api/staff", dependencies=[auth_dep])
 async def get_staff():
     async with async_session() as session:
         result = await session.execute(
@@ -279,7 +306,7 @@ async def get_staff():
         ]
 
 
-@app.post("/api/staff")
+@app.post("/api/staff", dependencies=[auth_dep])
 async def add_staff(staff: StaffUpdate):
     async with async_session() as session:
         try:
@@ -299,7 +326,7 @@ async def add_staff(staff: StaffUpdate):
         return {"status": "ok", "vk_id": staff.vk_id, "role": role.value}
 
 
-@app.delete("/api/staff/{user_id}")
+@app.delete("/api/staff/{user_id}", dependencies=[auth_dep])
 async def remove_staff(user_id: int):
     async with async_session() as session:
         result = await session.execute(select(User).where(User.id == user_id))
@@ -315,7 +342,7 @@ BOT_LOG_FILE = Path(__file__).parent / "bot_out.log"
 BOT_START_TIME_FILE = Path(__file__).parent / ".bot_start_time"
 
 
-@app.get("/api/bot/status")
+@app.get("/api/bot/status", dependencies=[auth_dep])
 async def bot_status():
     uptime = None
     if BOT_START_TIME_FILE.exists():
@@ -329,17 +356,17 @@ async def bot_status():
     return {"running": True, "pid": os.getpid(), "uptime": uptime, "mode": "long_polling"}
 
 
-@app.post("/api/bot/start")
+@app.post("/api/bot/start", dependencies=[auth_dep])
 async def bot_start():
     return {"status": "already_running", "pid": os.getpid(), "mode": "long_polling"}
 
 
-@app.post("/api/bot/stop")
+@app.post("/api/bot/stop", dependencies=[auth_dep])
 async def bot_stop():
     return {"status": "managed_by_process", "message": "Bot runs in the same process. Use start.sh/stop.sh to manage."}
 
 
-@app.post("/api/bot/restart")
+@app.post("/api/bot/restart", dependencies=[auth_dep])
 async def bot_restart():
     return {"status": "managed_by_process", "message": "Restart via: bash stop.sh && bash start.sh"}
 
@@ -347,7 +374,7 @@ async def bot_restart():
 app.mount("/crm", StaticFiles(directory=str(Path(__file__).parent / "crm")), name="crm")
 
 
-@app.get("/api/bot/logs")
+@app.get("/api/bot/logs", dependencies=[auth_dep])
 async def bot_logs(lines: int = 50):
     if BOT_LOG_FILE.exists():
         content = BOT_LOG_FILE.read_text(encoding="utf-8", errors="replace")

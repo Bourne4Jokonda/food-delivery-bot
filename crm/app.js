@@ -9,6 +9,14 @@ if (isInVK) {
   window.VKBridge.send('VKWebAppInit');
 }
 const API = API_BASE;
+const authHeaders = () => {
+  const key = localStorage.getItem('crm_api_key') || '';
+  return { 'X-API-Key': key, 'Content-Type': 'application/json' };
+};
+const apiFetch = (url, opts = {}) => {
+  const h = { ...authHeaders(), ...(opts.headers || {}) };
+  return fetch(url, { ...opts, headers: h });
+};
 const STATUS_MAP = {
   new: 'Новый',
   confirmed: 'Подтвержден',
@@ -54,6 +62,9 @@ const STATUS_LABEL_PICKUP = {
   delivered: 'Выдать'
 };
 const App = () => {
+  const [authed, setAuthed] = useState(!!localStorage.getItem('crm_api_key'));
+  const [loginKey, setLoginKey] = useState('');
+  const [loginError, setLoginError] = useState('');
   const [tab, setTab] = useState('orders');
   const [orders, setOrders] = useState([]);
   const [menu, setMenu] = useState([]);
@@ -86,9 +97,32 @@ const App = () => {
     role: 'kitchen',
     name: ''
   });
+  const doLogin = async () => {
+    setLoginError('');
+    try {
+      const r = await fetch(`${API}/auth/verify`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ key: loginKey })
+      });
+      if (r.ok) {
+        localStorage.setItem('crm_api_key', loginKey);
+        setAuthed(true);
+      } else {
+        setLoginError('Неверный ключ');
+      }
+    } catch (e) {
+      setLoginError('Ошибка соединения');
+    }
+  };
+  const doLogout = () => {
+    localStorage.removeItem('crm_api_key');
+    setAuthed(false);
+    setLoginKey('');
+  };
   const load = useCallback(async () => {
     try {
-      const [o, m, s, w] = await Promise.all([fetch(`${API}/orders`).then(r => r.json()), fetch(`${API}/menu`).then(r => r.json()), fetch(`${API}/stats`).then(r => r.json()), fetch(`${API}/stats/week`).then(r => r.json())]);
+      const [o, m, s, w] = await Promise.all([apiFetch(`${API}/orders`).then(r => r.json()), apiFetch(`${API}/menu`).then(r => r.json()), apiFetch(`${API}/stats`).then(r => r.json()), apiFetch(`${API}/stats/week`).then(r => r.json())]);
       setOrders(o);
       setMenu(m);
       setStats(s);
@@ -99,7 +133,7 @@ const App = () => {
   }, []);
   const loadBotStatus = useCallback(async () => {
     try {
-      const s = await fetch(`${API}/bot/status`).then(r => r.json());
+      const s = await apiFetch(`${API}/bot/status`).then(r => r.json());
       setBotStatus(s);
     } catch (e) {
       console.error(e);
@@ -107,7 +141,7 @@ const App = () => {
   }, []);
   const loadBotLogs = useCallback(async () => {
     try {
-      const l = await fetch(`${API}/bot/logs?lines=30`).then(r => r.json());
+      const l = await apiFetch(`${API}/bot/logs?lines=30`).then(r => r.json());
       setBotLogs(l.lines || []);
     } catch (e) {
       console.error(e);
@@ -115,7 +149,7 @@ const App = () => {
   }, []);
   const loadStaff = useCallback(async () => {
     try {
-      const s = await fetch(`${API}/staff`).then(r => r.json());
+      const s = await apiFetch(`${API}/staff`).then(r => r.json());
       setStaff(s);
     } catch (e) {
       console.error(e);
@@ -140,7 +174,7 @@ const App = () => {
     }
   }, [tab, loadBotLogs]);
   const updateStatus = async (id, status) => {
-    await fetch(`${API}/orders/${id}/status`, {
+    await apiFetch(`${API}/orders/${id}/status`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json'
@@ -158,7 +192,7 @@ const App = () => {
   };
   const openOrderDetail = async orderId => {
     try {
-      const res = await fetch(`${API}/orders/${orderId}`);
+      const res = await apiFetch(`${API}/orders/${orderId}`);
       const data = await res.json();
       setOrderDetail(data);
     } catch (e) {
@@ -171,7 +205,7 @@ const App = () => {
       price: parseFloat(newItem.price)
     };
     if (menuModal === 'new') {
-      await fetch(`${API}/menu`, {
+      await apiFetch(`${API}/menu`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -179,7 +213,7 @@ const App = () => {
         body: JSON.stringify(body)
       });
     } else {
-      await fetch(`${API}/menu/${menuModal}`, {
+      await apiFetch(`${API}/menu/${menuModal}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
@@ -198,7 +232,7 @@ const App = () => {
   };
   const deleteMenuItem = async id => {
     if (!confirm('Удалить блюдо?')) return;
-    await fetch(`${API}/menu/${id}`, {
+    await apiFetch(`${API}/menu/${id}`, {
       method: 'DELETE'
     });
     load();
@@ -213,7 +247,7 @@ const App = () => {
     setMenuModal(item.id);
   };
   const botAction = async action => {
-    await fetch(`${API}/bot/${action}`, {
+    await apiFetch(`${API}/bot/${action}`, {
       method: 'POST'
     });
     setTimeout(loadBotStatus, 1000);
@@ -225,7 +259,7 @@ const App = () => {
       name: newStaff.name
     };
     if (isNaN(body.vk_id)) return alert('Введите числовой VK ID');
-    await fetch(`${API}/staff`, {
+    await apiFetch(`${API}/staff`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -242,12 +276,44 @@ const App = () => {
   };
   const removeStaffMember = async id => {
     if (!confirm('Убрать сотрудника? Он станет клиентом.')) return;
-    await fetch(`${API}/staff/${id}`, {
+    await apiFetch(`${API}/staff/${id}`, {
       method: 'DELETE'
     });
     loadStaff();
   };
   const activeOrders = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled');
+  if (!authed) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "app",
+      style: { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "glass neo",
+      style: { padding: 40, width: 380, textAlign: 'center' }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: { fontSize: 48, marginBottom: 16 }
+    }, "\uD83C\uDF55"), /*#__PURE__*/React.createElement("h2", {
+      style: { marginBottom: 8, color: '#D8F3DC' }
+    }, "\u0412\u043A\u0443\u0441\u043D\u0430\u044F \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430 \u2014 CRM"), /*#__PURE__*/React.createElement("p", {
+      style: { color: '#95D5B2', marginBottom: 24, fontSize: 14 }
+    }, "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 API-\u043A\u043B\u044E\u0447 \u0434\u043B\u044F \u0434\u043E\u0441\u0442\u0443\u043F\u0430"), /*#__PURE__*/React.createElement("input", {
+      type: "password",
+      placeholder: "API \u043A\u043B\u044E\u0447",
+      value: loginKey,
+      onChange: e => setLoginKey(e.target.value),
+      onKeyDown: e => { if (e.key === 'Enter') doLogin(); },
+      style: {
+        width: '100%', padding: '12px 14px', background: 'rgba(119,200,148,0.08)',
+        border: '1px solid rgba(119,200,148,0.12)', borderRadius: 10, color: '#D8F3DC',
+        fontSize: 14, marginBottom: 12, outline: 'none', textAlign: 'center'
+      }
+    }), loginError && /*#__PURE__*/React.createElement("div", {
+      style: { color: '#e88', fontSize: 13, marginBottom: 12 }
+    }, loginError), /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-success",
+      onClick: doLogin,
+      style: { width: '100%', padding: '12px 0', fontSize: 14 }
+    }, "\u0412\u043E\u0439\u0442\u0438")));
+  }
   return /*#__PURE__*/React.createElement("div", {
     className: "app"
   }, /*#__PURE__*/React.createElement("div", {
@@ -262,7 +328,11 @@ const App = () => {
     onClick: load
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-rotate"
-  }), " Обновить")), /*#__PURE__*/React.createElement("div", {
+  }), " Обновить"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ghost",
+    onClick: doLogout,
+    style: { marginLeft: 8 }
+  }, "\uD83D\uDEAA Выйти")), /*#__PURE__*/React.createElement("div", {
     className: "stats"
   }, /*#__PURE__*/React.createElement("div", {
     className: "stat-card glass neo"
