@@ -5,7 +5,7 @@ from vkbottle import BaseStateGroup
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.db import async_session
-from database.models import User, Order, OrderItem, MenuItem, OrderStatus, UserRole
+from database.models import User, Order, OrderItem, MenuItem, OrderStatus, UserRole, Cart
 from bot.ai_agent import chat_with_ai, parse_order_from_ai_response
 
 KEY_STATUSES = {OrderStatus.READY, OrderStatus.DELIVERING, OrderStatus.DELIVERED, OrderStatus.CANCELLED}
@@ -24,7 +24,6 @@ from bot.keyboards import (
 
 logger = logging.getLogger("bot")
 
-user_carts = {}
 user_conversations = {}
 pending_orders = {}
 pending_notify = {}
@@ -133,6 +132,43 @@ def strip_buttons(text: str) -> str:
     return re.sub(r'[\U0001F300-\U0001FAFF\u25A0-\u25FF\u2600-\u27BF\u2B50\u2705\u274C\u26D4\u2B55\u203C\u2049\u2139\uFE0F\u200D]+\s*', '', text).strip().lower()
 
 
+async def get_cart(vk_id: int, session: AsyncSession = None) -> list[dict]:
+    if session:
+        user = await get_or_create_user(vk_id, session)
+        result = await session.execute(select(Cart).where(Cart.user_id == user.id))
+        return [{"id": r.menu_item_id, "quantity": r.quantity} for r in result.scalars().all()]
+    async with async_session() as s:
+        return await get_cart(vk_id, s)
+
+
+async def set_cart(vk_id: int, cart: list[dict], session: AsyncSession = None):
+    async def _do(s):
+        user = await get_or_create_user(vk_id, s)
+        await s.execute(Cart.__table__.delete().where(Cart.user_id == user.id))
+        for item in cart:
+            s.add(Cart(user_id=user.id, menu_item_id=item["id"], quantity=item["quantity"]))
+        await s.flush()
+        await s.commit()
+    if session:
+        await _do(session)
+    else:
+        async with async_session() as s:
+            await _do(s)
+
+
+async def clear_cart(vk_id: int, session: AsyncSession = None):
+    async def _do(s):
+        user = await get_or_create_user(vk_id, s)
+        await s.execute(Cart.__table__.delete().where(Cart.user_id == user.id))
+        await s.flush()
+        await s.commit()
+    if session:
+        await _do(session)
+    else:
+        async with async_session() as s:
+            await _do(s)
+
+
 class OrderState(BaseStateGroup):
     WAITING_ADDRESS = 0
 
@@ -171,7 +207,7 @@ async def handle_message(event):
             await show_category(event, CATEGORY_MAP[text])
 
         elif text == "корзина":
-            await show_cart(event, vk_id)
+            await show_cart(event, vk_id, session)
 
         elif any(w in text for w in ("мои заказы", "мои заказ", "где заказ", "заказ где", "мой заказ")):
             await show_user_orders(event, vk_id)
@@ -189,10 +225,7 @@ async def handle_message(event):
         elif "оформить заказ" in text:
             await start_order(event, vk_id)
 
-        elif "доставка" in text and vk_id in user_carts and user_carts[vk_id]:
-            await handle_delivery_choice(event, vk_id, text)
-
-        elif "самовывоз" in text and vk_id in user_carts and user_carts[vk_id]:
+        elif ("доставка" in text or "самовывоз" in text) and vk_id in pending_orders:
             await handle_delivery_choice(event, vk_id, text)
 
         elif any(w in text for w in ("карта", "наличн", "онлайн")) and vk_id in pending_orders:
@@ -223,7 +256,7 @@ async def handle_message(event):
             await event.answer("Как будете оплачивать?", keyboard=get_payment_keyboard())
 
         elif "очистить" in text:
-            user_carts[vk_id] = []
+            await clear_cart(vk_id)
             await event.answer("Корзина очищена", keyboard=get_main_menu_keyboard())
 
         elif text.startswith("принять"):
@@ -324,7 +357,7 @@ async def add_to_cart_by_name(event, vk_id: int, text: str):
             await handle_ai_chat(event, vk_id, text)
             return
 
-        cart = user_carts.get(vk_id, [])
+        cart = await get_cart(vk_id, session)
         added = []
         for menu_item in found_items:
             qty = getattr(menu_item, '_qty', 1)
@@ -337,14 +370,13 @@ async def add_to_cart_by_name(event, vk_id: int, text: str):
             if not found:
                 cart.append({"id": menu_item.id, "quantity": qty})
             added.append(f"{menu_item.name} x{qty}")
-        user_carts[vk_id] = cart
+        await set_cart(vk_id, cart, session)
 
         total = 0
-        async with async_session() as session2:
-            for ci in cart:
-                result2 = await session2.execute(select(MenuItem).where(MenuItem.id == ci["id"]))
-                mi = result2.scalar_one()
-                total += mi.price * ci["quantity"]
+        for ci in cart:
+            result2 = await session.execute(select(MenuItem).where(MenuItem.id == ci["id"]))
+            mi = result2.scalar_one()
+            total += mi.price * ci["quantity"]
 
         await event.answer(
             f"Добавлено: {', '.join(added)}\n"
@@ -353,21 +385,29 @@ async def add_to_cart_by_name(event, vk_id: int, text: str):
         )
 
 
-async def show_cart(event, vk_id: int):
-    cart = user_carts.get(vk_id, [])
+async def show_cart(event, vk_id: int, session: AsyncSession = None):
+    cart = await get_cart(vk_id, session)
     if not cart:
         await event.answer("Корзина пуста", keyboard=get_main_menu_keyboard())
         return
 
     text = "Ваша корзина:\n\n"
     total = 0
-    async with async_session() as session:
+    if session:
         for item in cart:
             result = await session.execute(select(MenuItem).where(MenuItem.id == item["id"]))
             menu_item = result.scalar_one()
             subtotal = menu_item.price * item["quantity"]
             total += subtotal
             text += f"- {menu_item.name} x{item['quantity']} — {subtotal}₽\n"
+    else:
+        async with async_session() as s:
+            for item in cart:
+                result = await s.execute(select(MenuItem).where(MenuItem.id == item["id"]))
+                menu_item = result.scalar_one()
+                subtotal = menu_item.price * item["quantity"]
+                total += subtotal
+                text += f"- {menu_item.name} x{item['quantity']} — {subtotal}₽\n"
 
     text += f"\nИтого: {total}₽"
     await event.answer(text, keyboard=get_cart_keyboard())
@@ -407,10 +447,10 @@ async def handle_ai_chat(event, vk_id: int, text: str):
                             best_score = score
                 if best and best_score >= 0.3:
                     new_cart.append({"id": best.id, "quantity": qty})
-            user_carts[vk_id] = new_cart
+            await set_cart(vk_id, new_cart, session)
 
-        if user_carts.get(vk_id):
-            cart = user_carts[vk_id]
+        cart = await get_cart(vk_id, session)
+        if cart:
             cart_text = "Ваш заказ сформирован:\n\n"
             total = 0
             async with async_session() as session:
@@ -436,7 +476,7 @@ async def handle_ai_chat(event, vk_id: int, text: str):
 
 
 async def start_order(event, vk_id: int):
-    cart = user_carts.get(vk_id, [])
+    cart = await get_cart(vk_id)
     if not cart:
         await event.answer("Сначала добавьте что-нибудь в корзину!", keyboard=get_main_menu_keyboard())
         return
@@ -445,7 +485,7 @@ async def start_order(event, vk_id: int):
 
 
 async def handle_delivery_choice(event, vk_id: int, text: str):
-    cart = user_carts.get(vk_id, [])
+    cart = await get_cart(vk_id)
     if not cart:
         await event.answer("Корзина пуста", keyboard=get_main_menu_keyboard())
         return
@@ -505,7 +545,7 @@ async def handle_delivery_choice(event, vk_id: int, text: str):
                 session.add(item)
 
             await session.commit()
-            user_carts[vk_id] = []
+            await clear_cart(vk_id, session)
             del pending_orders[vk_id]
 
             delivery_text = "🚗 Доставка" if delivery_type == "delivery" else "🚶 Самовывоз"

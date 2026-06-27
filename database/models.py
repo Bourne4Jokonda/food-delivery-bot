@@ -79,3 +79,15 @@ class OrderItem(Base):
 
     order = relationship("Order", back_populates="items")
     menu_item = relationship("MenuItem", back_populates="order_items")
+
+
+class Cart(Base):
+    __tablename__ = "cart"
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    menu_item_id = Column(Integer, ForeignKey("menu_items.id"), nullable=False)
+    quantity = Column(Integer, default=1)
+
+    user = relationship("User")
+    menu_item = relationship("MenuItem")
