@@ -1,51 +1,36 @@
 # Деплой на Android (Termux) — Пошаговая инструкция
 
-## Перед установкой (на ПК клиента)
+## Установка на новый телефон
 
-### Получение токенов VK
-
-1. Откройте VK → Сообщества → ваше сообщество → **Управление**
-2. **Работа с API** → **Ключи доступа** → **Создать ключ**
-3. Выберите права: `messages`, `groups`, `manage`
-4. Скопируйте токен — это **токен сообщества** (начинается с `vk1.a.`)
-
-> **ВАЖНО**: Это должен быть токен СООБЩЕСТВА, а не персональный токен пользователя!
-> Путь: Сообщество → Управление → Работа с API → Ключи доступа
-
----
-
-## Установка на телефон
-
-### 1. Установка Termux
+### Шаг 1: Установить Termux и Termux:Boot
 
 1. Скачайте **Termux** с F-Droid (НЕ из Google Play!)
 2. Скачайте **Termux:Boot** с F-Droid
 3. Откройте Termux:Boot хотя бы один раз
 
-### 2. Установка проекта
+### Шаг 2: Установить пакеты
 
-В Termux выполните:
+Откройте Termux и выполните:
 
 ```bash
-# Установить пакеты
 pkg update -y && pkg upgrade -y
-pkg install -y python git
+pkg install -y python git curl nodejs
+```
 
-# Скачать проект
+### Шаг 3: Скачать проект
+
+```bash
 git clone https://github.com/Bourne4Jokonda/food-delivery-bot.git ~/food-delivery-bot
 cd ~/food-delivery-bot
-
-# Установить зависимости
-pip install -r requirements.txt
 ```
 
-Или если проект скопирован через файлы:
+### Шаг 4: Установить Python-зависимости
+
 ```bash
-cd ~/food-delivery-bot
 pip install -r requirements.txt
 ```
 
-### 3. Настройка .env
+### Шаг 5: Настроить .env
 
 ```bash
 nano .env
@@ -54,8 +39,8 @@ nano .env
 Заполните все поля:
 
 ```
-VK_BOT_TOKEN=ваш_токен_сообщества
-VK_GROUP_ID=номер_вашей_группы
+VK_BOT_TOKEN=токен_сообщества_VK
+VK_GROUP_ID=номер_группы
 CALLBACK_CONFIRMATION=код_из_настроек_API
 VK_SECRET_KEY=секретный_ключ_из_настроек_API
 YANDEX_GPT_API_KEY=ключ_ЯндексGPT
@@ -68,134 +53,159 @@ COURIER_CHAT_ID=2000000003
 
 Сохранить: `Ctrl+O` → `Enter` → `Ctrl+X`
 
-### 4. Запуск
+### Шаг 6: Запустить бота
 
 ```bash
-bash start.sh
+cd ~/food-delivery-bot && bash start.sh
 ```
 
-Проверьте логи:
-```bash
-cat bot_out.log
-```
+### Шаг 7: Проверить работу
 
-Если видите `Bot (Long Polling) + CRM (port 8080) started` — бот работает.
-Если ошибки — читайте раздел "Решение проблем" ниже.
+1. Напишите боту `/start` в VK
+2. Проверьте логи: `cat bot_out.log`
+3. Откройте CRM на телефоне: `http://localhost:8080`
 
-### 5. Проверка в VK
-
-Напишите боту `/start` в сообществе VK. Бот должен ответить приветствием.
-
-### 6. Настройка автозапуска
+### Шаг 8: Найти IP для доступа с ПК
 
 ```bash
-bash setup_termux_boot.sh
+python -c "import socket; s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM); s.connect(('8.8.8.8',80)); print(s.getsockname()[0]); s.close()"
 ```
 
-Важно:
-- Установите **Termux:Boot** из F-Droid
-- Откройте Termux:Boot хотя бы один раз
-- Отключите оптимизацию батареи для Termux: Настройки телефона → Батарея → Termux → "Не оптимизировать"
-- Разрешить работу в фоне: Настройки телефона → Приложения → Termux → "Работать в фоне"
+На ПК откройте: `http://<IP-телефона>:8080`
+
+**Важно:** ПК и телефон должны быть в одной Wi-Fi сети.
 
 ---
 
 ## Управление ботом
 
 ```bash
-bash start.sh     # Запустить
-bash stop.sh      # Остановить
-bash status.sh    # Статус
-bash tunnel.sh    # Туннель для CRM
+bash start.sh      # Запустить
+bash stop.sh       # Остановить
+bash status.sh     # Статус
+bash stop.sh && bash start.sh  # Перезапустить
 ```
 
 ---
 
-## VK Mini App (CRM-панель)
+## Обновление кода
 
-### Настройка Cloudflare Tunnel
+Когда в GitHub появятся обновления:
 
 ```bash
-bash tunnel.sh
+cd ~/food-delivery-bot && git pull && bash stop.sh && bash start.sh
 ```
 
-Скопируйте URL туннеля (типа `https://random-name.trycloudflare.com`).
+---
 
-### Настройка в VK
+## Настройка сотрудников
 
-1. Сообщество → Управление → **VK Mini Apps** → Создать приложение
-2. Вставьте URL туннеля
-3. Скопируйте App ID
+1. Откройте CRM: `http://localhost:8080` на телефоне
+2. Перейдите на вкладку **Сотрудники**
+3. Нажмите **Добавить**
+4. Введите VK ID сотрудника и выберите роль (кухня/курьер)
+5. Попросите сотрудника написать боту `/start` в VK
 
-### Обновление config.js
+---
 
-Откройте `crm/config.js`:
+## Получение токенов VK
 
-```javascript
-window.VK_MINI_APP_CONFIG = {
-    API_URL: 'https://ваш-url-туннеля/api',
-};
+### Токен сообщества (бота)
+
+1. VK → Сообщество → **Управление**
+2. **Работа с API** → **Ключи доступа** → **Создать ключ**
+3. Выберите права: `messages`, `groups`, `manage`
+4. Скопируйте токен
+
+> **ВАЖНО:** Это должен быть токен СООБЩЕСТВА, а не пользователя!
+> Путь: Сообщество → Управление → Работа с API → Ключи доступа
+
+### Проверка токена
+
+```bash
+curl -s "https://api.vk.com/method/groups.getById?access_token=ВАШ_ТОКЕН&v=5.199"
 ```
 
-### Публикация
-
-1. VK Mini Apps → Настройки → Описание и скриншоты
-2. Заполните описание, загрузите иконку
-3. "Отправить на модерацию"
+Если вернул `{"response":{...}}` — токен рабочий.
 
 ---
 
 ## Решение проблем
 
-### "invalid access_token" — токен не работает
+### Бот не запускается — проверьте логи
+
+```bash
+cat bot_out.log | tail -20
+```
+
+### Ошибка "invalid access_token"
 
 - Убедитесь, что это токен **сообщества**, а не пользователя
-- Путь: Сообщество → Управление → Работа с API → Ключи доступа
 - Убедитесь, что у токена есть права `messages` и `groups`
-- Проверьте токен: `curl -s "https://api.vk.com/method/groups.getById?access_token=ТОКЕН&v=5.199"`
+- Проверьте токен через curl (см. выше)
 
-### "AssertionError: TypingOnly" — несовместимость SQLAlchemy
+### Ошибка "AssertionError: TypingOnly"
 
 ```bash
 pip install "sqlalchemy>=2.0.36,<2.1"
 bash stop.sh && bash start.sh
 ```
 
-### "MessageMin is immutable" — конфликт pydantic/vkbottle
+### Ошибка "MessageMin is immutable"
 
 ```bash
 pip install --upgrade vkbottle
-pip install "pydantic<2.0"
+pip install "pydantic>=2.0,<3.0"
 bash stop.sh && bash start.sh
 ```
 
-### "Нет блюд в меню" — база пуста
+### "Нет блюд в меню"
 
 ```bash
 python init_menu.py
 bash stop.sh && bash start.sh
 ```
 
-### Бот не запускается — проверьте логи
+### Порт 8080 уже занят
 
 ```bash
-cat bot_out.log
+pkill -f "python run.py"
+sleep 2
+bash start.sh
 ```
 
-### Запрет на обновление pip
+### ИИ-сервис недоступен
 
-В Termux НЕЛЬЗЯ выполнять `pip install --upgrade pip` — это ломает системный pip.
-Уже удалено из install.sh.
+Убедитесь, что ключи YandexGPT в `.env`:
+```bash
+grep YANDEX .env
+```
+Если пусто — добавьте через `nano .env` и перезапустите.
 
 ---
 
-## Порядок действий для клиента (краткий)
+## CRM доступна с других устройств
 
-1. Установить **Termux** + **Termux:Boot** (из F-Droid)
-2. `pkg install -y python git`
-3. `git clone https://github.com/Bourne4Jokonda/food-delivery-bot.git ~/food-delivery-bot`
+CRM работает на телефоне и доступна с ПК/планшета в той же Wi-Fi сети.
+
+1. Узнайте IP телефона:
+```bash
+python -c "import socket; s=socket.socket(socket.AF_INET,socket.SOCK_DGRAM); s.connect(('8.8.8.8',80)); print(s.getsockname()[0]); s.close()"
+```
+
+2. На другом устройстве откройте: `http://<IP-телефона>:8080`
+
+**Важно:** IP меняется при переподключении к Wi-Fi. Узнавайте заново при необходимости.
+
+---
+
+## Порядок действий (краткий)
+
+1. Termux + Termux:Boot (из F-Droid)
+2. `pkg install python git curl nodejs`
+3. `git clone https://github.com/Bourne4Jokonda/food-delivery-bot.git`
 4. `cd ~/food-delivery-bot && pip install -r requirements.txt`
-5. Заполнить `.env` (токены VK и YandexGPT): `nano .env`
+5. `nano .env` — заполнить токены
 6. `bash start.sh`
 7. Проверить: написать `/start` боту в VK
-8. Настроить автозапуск: `bash setup_termux_boot.sh`
+8. CRM: `http://localhost:8080` на телефоне
