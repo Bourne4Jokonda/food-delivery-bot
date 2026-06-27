@@ -7,3 +7,11 @@ __pycache__/
 .bot_start_time
 .vkbottle/
 distill_summary.md
+node_modules/
+package-lock.json
+package.json
+crm/old_index.html
+crm/check*.html
+crm/github_*.html
+extract.js
+.babelrc
