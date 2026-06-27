@@ -1,11 +1,14 @@
 import httpx
 import json
 import os
+from sqlalchemy import select
+from database.db import async_session
+from database.models import MenuItem
 
 YANDEX_GPT_API_KEY = os.getenv("YANDEX_GPT_API_KEY")
 YANDEX_GPT_FOLDER_ID = os.getenv("YANDEX_GPT_FOLDER_ID")
 
-SYSTEM_PROMPT = """Ты - помощник ресторана "Вкусная Доставка". Твоя задача:
+SYSTEM_PROMPT_TEMPLATE = """Ты - помощник ресторана "Вкусная Доставка". Твоя задача:
 1. Консультировать клиентов по меню
 2. Помогать с выбором блюд
 3. Принимать заказы
@@ -20,24 +23,41 @@ SYSTEM_PROMPT = """Ты - помощник ресторана "Вкусная Д
 - Время доставки: 30-60 минут
 
 Меню ресторана:
-- Пицца Маргарита - 450₽
-- Пицца Пепперони - 520₽
-- Рамен - 380₽
-- Боул с курицей - 350₽
-- Салат Цезарь - 280₽
-- Бургер Классик - 320₽
-- Картофель фри - 150₽
-- Кола 0.5л - 120₽
+{menu_text}
 
 Формат заказа: после принятия заказа выведи JSON:
-{"type": "order", "items": [{"name": "...", "quantity": N}], "delivery": "delivery/pickup", "address": "..."}
+{{"type": "order", "items": [{{"name": "...", "quantity": N}}], "delivery": "delivery/pickup", "address": "..."}}
 
 Для простых вопросов отвечай текстом."""
+
+
+async def get_menu_text() -> str:
+    try:
+        async with async_session() as session:
+            result = await session.execute(
+                select(MenuItem).where(MenuItem.available == 1).order_by(MenuItem.category)
+            )
+            items = result.scalars().all()
+            if not items:
+                return "- Меню пока пустое"
+            lines = []
+            current_cat = None
+            for item in items:
+                if item.category != current_cat:
+                    current_cat = item.category
+                    lines.append(f"\n{current_cat}:")
+                lines.append(f"- {item.name} - {item.price}₽")
+            return "\n".join(lines)
+    except Exception:
+        return "- Меню пока пустое"
 
 
 async def chat_with_ai(messages: list[dict]) -> str:
     if not YANDEX_GPT_API_KEY:
         return "ИИ-сервис временно недоступен. Напишите 'заказ' чтобы сделать заказ вручную."
+
+    menu_text = await get_menu_text()
+    system_prompt = SYSTEM_PROMPT_TEMPLATE.format(menu_text=menu_text)
 
     headers = {
         "Authorization": f"Api-Key {YANDEX_GPT_API_KEY}",
@@ -52,7 +72,7 @@ async def chat_with_ai(messages: list[dict]) -> str:
             "maxTokens": 2000
         },
         "messages": [
-            {"role": "system", "text": SYSTEM_PROMPT}
+            {"role": "system", "text": system_prompt}
         ] + messages
     }
 
