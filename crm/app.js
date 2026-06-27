@@ -127,9 +127,9 @@ const App = () => {
   };
   const load = useCallback(async () => {
     try {
-      const [o, m, s, w] = await Promise.all([apiFetch(`${API}/orders`).then(r => r.json()), apiFetch(`${API}/menu`).then(r => r.json()), apiFetch(`${API}/stats`).then(r => r.json()), apiFetch(`${API}/stats/week`).then(r => r.json())]);
-      setOrders(o);
-      setMenu(m);
+      const [o, m, s, w] = await Promise.all([apiFetch(`${API}/orders`).then(r => r.ok ? r.json() : []), apiFetch(`${API}/menu`).then(r => r.ok ? r.json() : []), apiFetch(`${API}/stats`).then(r => r.ok ? r.json() : {orders:0,revenue:0}), apiFetch(`${API}/stats/week`).then(r => r.ok ? r.json() : {orders:0,revenue:0})]);
+      setOrders(Array.isArray(o) ? o : []);
+      setMenu(Array.isArray(m) ? m : []);
       setStats(s);
       setWeekStats(w);
     } catch (e) {
@@ -138,7 +138,8 @@ const App = () => {
   }, []);
   const loadBotStatus = useCallback(async () => {
     try {
-      const s = await apiFetch(`${API}/bot/status`).then(r => r.json());
+      const r = await apiFetch(`${API}/bot/status`);
+      const s = r.ok ? await r.json() : {running:false,pid:null,uptime:null};
       setBotStatus(s);
     } catch (e) {
       console.error(e);
@@ -146,7 +147,8 @@ const App = () => {
   }, []);
   const loadBotLogs = useCallback(async () => {
     try {
-      const l = await apiFetch(`${API}/bot/logs?lines=30`).then(r => r.json());
+      const r = await apiFetch(`${API}/bot/logs?lines=30`);
+      const l = r.ok ? await r.json() : {lines:[]};
       setBotLogs(l.lines || []);
     } catch (e) {
       console.error(e);
@@ -154,8 +156,9 @@ const App = () => {
   }, []);
   const loadStaff = useCallback(async () => {
     try {
-      const s = await apiFetch(`${API}/staff`).then(r => r.json());
-      setStaff(s);
+      const r = await apiFetch(`${API}/staff`);
+      const s = r.ok ? await r.json() : [];
+      setStaff(Array.isArray(s) ? s : []);
     } catch (e) {
       console.error(e);
     }
