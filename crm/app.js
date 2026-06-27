@@ -9,16 +9,14 @@ if (isInVK) {
   window.VKBridge.send('VKWebAppInit');
 }
 const API = API_BASE;
-const authHeaders = () => {
-  const key = localStorage.getItem('crm_api_key') || '';
-  return { 'X-API-Key': key, 'Content-Type': 'application/json' };
-};
+let _authCallback = null;
 const apiFetch = (url, opts = {}) => {
-  const h = { ...authHeaders(), ...(opts.headers || {}) };
+  const key = localStorage.getItem('crm_api_key') || '';
+  const h = { 'X-API-Key': key, ...(opts.headers || {}) };
   return fetch(url, { ...opts, headers: h }).then(r => {
-    if (r.status === 401) {
+    if (r.status === 401 && _authCallback) {
       localStorage.removeItem('crm_api_key');
-      location.reload();
+      _authCallback(false);
     }
     return r;
   });
@@ -69,6 +67,7 @@ const STATUS_LABEL_PICKUP = {
 };
 const App = () => {
   const [authed, setAuthed] = useState(!!localStorage.getItem('crm_api_key'));
+  _authCallback = setAuthed;
   const [loginKey, setLoginKey] = useState('');
   const [loginError, setLoginError] = useState('');
   const [tab, setTab] = useState('orders');
