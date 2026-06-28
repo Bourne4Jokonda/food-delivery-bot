@@ -4,7 +4,7 @@ import httpx
 from vkbottle import BaseStateGroup
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from database.db import async_session
+from database.db import async_session, get_conversation, add_conversation_message
 from database.models import User, Order, OrderItem, MenuItem, OrderStatus, UserRole, Cart
 from bot.ai_agent import chat_with_ai, parse_order_from_ai_response
 
@@ -24,7 +24,6 @@ from bot.keyboards import (
 
 logger = logging.getLogger("bot")
 
-user_conversations = {}
 pending_orders = {}
 pending_notify = {}
 ADMIN_VK_ID = 552266758
@@ -429,12 +428,10 @@ async def show_cart(event, vk_id: int, session: AsyncSession = None):
 async def handle_ai_chat(event, vk_id: int, text: str):
     import re as _re
 
-    if vk_id not in user_conversations:
-        user_conversations[vk_id] = []
+    await add_conversation_message(vk_id, "user", text)
+    history = await get_conversation(vk_id)
 
-    user_conversations[vk_id].append({"role": "user", "text": text})
-
-    response = await chat_with_ai(user_conversations[vk_id])
+    response = await chat_with_ai(history)
 
     clean_response = _re.sub(r'```[\s\S]*?```', '', response).strip()
     clean_response = _re.sub(r'\{[\s\S]*?"type"\s*:\s*"order"[\s\S]*?\}', '', clean_response).strip()
@@ -482,9 +479,7 @@ async def handle_ai_chat(event, vk_id: int, text: str):
     else:
         if clean_response:
             response = clean_response
-        user_conversations[vk_id].append({"role": "assistant", "text": response})
-        if len(user_conversations[vk_id]) > 20:
-            user_conversations[vk_id] = user_conversations[vk_id][-10:]
+        await add_conversation_message(vk_id, "assistant", response)
         await event.answer(response, keyboard=get_main_menu_keyboard())
 
 
@@ -508,7 +503,13 @@ async def handle_delivery_choice(event, vk_id: int, text: str):
         await event.answer("Укажите адрес доставки:")
     elif "самовывоз" in text:
         pending_orders[vk_id] = {"delivery_type": "pickup"}
-        await event.answer("Как будете оплачивать?", keyboard=get_payment_keyboard())
+        async with async_session() as session:
+            user = await get_or_create_user(vk_id, session)
+            if user.phone:
+                await event.answer("Как будете оплачивать?", keyboard=get_payment_keyboard())
+            else:
+                pending_orders[vk_id]["awaiting_phone"] = True
+                await event.answer("Укажите номер телефона для связи:")
     elif "карта" in text or "наличн" in text or "онлайн" in text:
         if vk_id not in pending_orders:
             await event.answer("Сначала выберите тип получения", keyboard=get_main_menu_keyboard())

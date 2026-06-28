@@ -91,3 +91,13 @@ class Cart(Base):
 
     user = relationship("User")
     menu_item = relationship("MenuItem")
+
+
+class ConversationMessage(Base):
+    __tablename__ = "conversation_messages"
+
+    id = Column(Integer, primary_key=True)
+    vk_id = Column(Integer, nullable=False, index=True)
+    role = Column(String, nullable=False)  # "user" or "assistant"
+    message = Column(String, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)

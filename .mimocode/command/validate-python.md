@@ -17,7 +17,7 @@ validate-python <file_path>
 ```
 validate-python bot/handlers.py
 validate-python api.py
-validate-python run_polling.py
+validate-python run.py
 ```
 
 ## Implementation

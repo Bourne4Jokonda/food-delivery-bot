@@ -1,0 +1,29 @@
+services:
+  - type: web
+    name: food-delivery-bot
+    runtime: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: python run.py
+    envVars:
+      - key: VK_BOT_TOKEN
+        sync: false
+      - key: VK_GROUP_ID
+        sync: false
+      - key: CALLBACK_CONFIRMATION
+        sync: false
+      - key: VK_SECRET_KEY
+        sync: false
+      - key: YANDEX_GPT_API_KEY
+        sync: false
+      - key: YANDEX_GPT_FOLDER_ID
+        sync: false
+      - key: DATABASE_URL
+        value: sqlite+aiosqlite:///./food_delivery.db
+      - key: ADMIN_CHAT_ID
+        value: "2000000001"
+      - key: KITCHEN_CHAT_ID
+        value: "2000000002"
+      - key: COURIER_CHAT_ID
+        value: "2000000003"
+      - key: CRM_API_KEY
+        sync: false

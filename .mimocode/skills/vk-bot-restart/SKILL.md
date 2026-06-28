@@ -18,7 +18,7 @@ This skill handles the complex multi-step process of restarting the VK food deli
 
 - Python 3.14 installed at: `C:\Users\Александр\AppData\Local\Python\pythoncore-3.14-64\python.exe`
 - Project directory: `C:\Users\Александр\Downloads\Софт\food-delivery-bot`
-- Bot entry point: `run_polling.py` (Polling mode) or `run.py` (Callback API mode)
+- Bot entry point: `run.py` (Long Polling + CRM combined)
 
 ## Steps
 
@@ -43,13 +43,7 @@ Start-Sleep -Seconds 2
 
 ### 3. Start Bot Process
 
-**For Polling Mode** (recommended for this project):
-
-```powershell
-Start-Process -FilePath "py" -ArgumentList "-3.14", "run_polling.py" -WorkingDirectory "C:\Users\Александр\Downloads\Софт\food-delivery-bot" -WindowStyle Hidden
-```
-
-**For Callback API Mode** (if using ngrok):
+**Single entry point** — runs both bot (Long Polling) + CRM (FastAPI on port 8080):
 
 ```powershell
 Start-Process -FilePath "py" -ArgumentList "-3.14", "run.py" -WorkingDirectory "C:\Users\Александр\Downloads\Софт\food-delivery-bot" -WindowStyle Hidden
@@ -59,7 +53,7 @@ Start-Process -FilePath "py" -ArgumentList "-3.14", "run.py" -WorkingDirectory "
 
 ```powershell
 $pyPath = "C:\Users\Александр\AppData\Local\Python\pythoncore-3.14-64\python.exe"
-Start-Process -FilePath $pyPath -ArgumentList "run_polling.py" -WorkingDirectory "C:\Users\Александр\Downloads\Софт\food-delivery-bot" -WindowStyle Hidden
+Start-Process -FilePath $pyPath -ArgumentList "run.py" -WorkingDirectory "C:\Users\Александр\Downloads\Софт\food-delivery-bot" -WindowStyle Hidden
 ```
 
 ### 4. Verify Bot is Running
@@ -87,7 +81,7 @@ py -3.14 -c "import httpx, os; from dotenv import load_dotenv; load_dotenv(r'C:\
 
 ### Issue: Bot process starts but doesn't respond
 - **Cause**: Wrong entry point or missing dependencies
-- **Fix**: Check if using `run_polling.py` for polling mode, `run.py` for callback mode
+- **Fix**: Bot entry point is `run.py` which handles both Long Polling and CRM
 
 ### Issue: "Access denied" on `groups.getLongPollServer`
 - **Cause**: Token from "Ключи доступа" doesn't have Long Poll API permission
