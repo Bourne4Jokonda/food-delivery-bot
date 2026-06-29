@@ -13,6 +13,7 @@ from bot.keyboards import (
     get_main_menu_keyboard,
     get_menu_keyboard,
     get_cart_keyboard,
+    get_cart_item_keyboard,
     get_delivery_keyboard,
     get_payment_keyboard,
     get_notify_keyboard,
@@ -343,6 +344,15 @@ async def handle_message(event):
             await clear_cart(vk_id)
             await event.answer("Корзина очищена", keyboard=get_main_menu_keyboard())
 
+        elif text.startswith("➕"):
+            await cart_add_item(event, vk_id, text)
+
+        elif text.startswith("➖") or text.startswith("🗑"):
+            await cart_remove_item(event, vk_id, text)
+
+        elif text.startswith("-") and len(text) > 1 and not text.startswith("—"):
+            await cart_remove_by_name(event, vk_id, text[1:].strip())
+
         elif text.startswith("принять"):
             await confirm_order(event, text)
 
@@ -483,32 +493,110 @@ async def add_to_cart_by_name(event, vk_id: int, text: str):
         )
 
 
+async def cart_add_item(event, vk_id: int, text: str):
+    import re as _re
+    match = _re.search(r'➕\s*(\d+)', text)
+    if not match:
+        return
+    item_id = int(match.group(1))
+    cart = await get_cart(vk_id)
+    for item in cart:
+        if item["id"] == item_id:
+            item["quantity"] += 1
+            break
+    await set_cart(vk_id, cart)
+    await show_cart(event, vk_id)
+
+
+async def cart_remove_item(event, vk_id: int, text: str):
+    import re as _re
+    match = _re.search(r'[➖🗑]\s*(\d+)', text)
+    if not match:
+        return
+    item_id = int(match.group(1))
+    cart = await get_cart(vk_id)
+    new_cart = []
+    for item in cart:
+        if item["id"] == item_id:
+            if item["quantity"] > 1 and "➖" in text:
+                item["quantity"] -= 1
+                new_cart.append(item)
+            elif "🗑" in text:
+                pass
+            else:
+                item["quantity"] -= 1
+                new_cart.append(item)
+        else:
+            new_cart.append(item)
+    await set_cart(vk_id, new_cart)
+    await show_cart(event, vk_id)
+
+
+async def cart_remove_by_name(event, vk_id: int, text: str):
+    import re as _re
+    cart = await get_cart(vk_id)
+    if not cart:
+        await event.answer("Корзина пуста", keyboard=get_main_menu_keyboard())
+        return
+
+    async with async_session() as session:
+        result = await session.execute(select(MenuItem).where(MenuItem.available == 1))
+        all_items = result.scalars().all()
+
+        phrase = text.lower()
+        best_item = None
+        best_score = -1
+        for mi in all_items:
+            if phrase in mi.name.lower():
+                score = len(phrase) / len(mi.name.lower())
+                if score > best_score:
+                    best_item = mi
+                    best_score = score
+
+        if not best_item or best_score < 0.3:
+            await event.answer("Товар не найден в корзине", keyboard=get_cart_keyboard())
+            return
+
+        new_cart = []
+        removed = False
+        for item in cart:
+            if item["id"] == best_item.id:
+                if item["quantity"] > 1:
+                    item["quantity"] -= 1
+                    new_cart.append(item)
+                removed = True
+            else:
+                new_cart.append(item)
+
+        await set_cart(vk_id, new_cart, session)
+
+        if removed:
+            await event.answer(f"Убрано: {best_item.name}", keyboard=get_cart_keyboard())
+        else:
+            await event.answer(f"{best_item.name} не в корзине", keyboard=get_cart_keyboard())
+
+
 async def show_cart(event, vk_id: int, session: AsyncSession = None):
     cart = await get_cart(vk_id, session)
     if not cart:
         await event.answer("Корзина пуста", keyboard=get_main_menu_keyboard())
         return
 
-    text = "Ваша корзина:\n\n"
     total = 0
-    if session:
+    items_info = []
+    async with async_session() as s:
         for item in cart:
-            result = await session.execute(select(MenuItem).where(MenuItem.id == item["id"]))
+            result = await s.execute(select(MenuItem).where(MenuItem.id == item["id"]))
             menu_item = result.scalar_one()
             subtotal = menu_item.price * item["quantity"]
             total += subtotal
-            text += f"- {menu_item.name} x{item['quantity']} — {subtotal}₽\n"
-    else:
-        async with async_session() as s:
-            for item in cart:
-                result = await s.execute(select(MenuItem).where(MenuItem.id == item["id"]))
-                menu_item = result.scalar_one()
-                subtotal = menu_item.price * item["quantity"]
-                total += subtotal
-                text += f"- {menu_item.name} x{item['quantity']} — {subtotal}₽\n"
+            items_info.append((menu_item, item["quantity"], subtotal))
 
-    text += f"\nИтого: {total}₽"
-    await event.answer(text, keyboard=get_cart_keyboard())
+    for menu_item, qty, subtotal in items_info:
+        msg = f"{'➖' if qty > 1 else '🗑'} {menu_item.name} x{qty} — {subtotal}₽"
+        await event.answer(msg, keyboard=get_cart_item_keyboard(menu_item.id, qty))
+
+    await event.answer(f"Итого: {total}₽\n\nОформить заказ?", keyboard=get_cart_keyboard())
 
 
 async def handle_ai_chat(event, vk_id: int, text: str):

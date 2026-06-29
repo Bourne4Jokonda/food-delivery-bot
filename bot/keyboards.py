@@ -26,6 +26,17 @@ def get_menu_keyboard():
     return keyboard
 
 
+def get_cart_item_keyboard(item_id: int, quantity: int):
+    keyboard = Keyboard(one_time=True, inline=True)
+    if quantity > 1:
+        keyboard.add(Text(f"➖ {item_id}"), color=KeyboardButtonColor.SECONDARY)
+    else:
+        keyboard.add(Text(f"🗑 {item_id}"), color=KeyboardButtonColor.NEGATIVE)
+    keyboard.add(Text(f"×{quantity}"), color=KeyboardButtonColor.SECONDARY)
+    keyboard.add(Text(f"➕ {item_id}"), color=KeyboardButtonColor.POSITIVE)
+    return keyboard
+
+
 def get_cart_keyboard():
     keyboard = Keyboard(one_time=False, inline=False)
     keyboard.add(Text("✅ Оформить заказ"), color=KeyboardButtonColor.POSITIVE)
