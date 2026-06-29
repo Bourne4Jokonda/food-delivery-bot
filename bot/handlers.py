@@ -5,7 +5,7 @@ from vkbottle import BaseStateGroup
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.db import async_session, get_conversation, add_conversation_message
-from database.models import User, Order, OrderItem, MenuItem, OrderStatus, UserRole, Cart
+from database.models import User, Order, OrderItem, MenuItem, OrderStatus, UserRole, Cart, DeliveryZone
 from bot.ai_agent import chat_with_ai, parse_order_from_ai_response
 
 KEY_STATUSES = {OrderStatus.READY, OrderStatus.DELIVERING, OrderStatus.DELIVERED, OrderStatus.CANCELLED}
@@ -74,15 +74,41 @@ CATEGORY_MAP = {
 }
 
 
-def detect_delivery_zone(address: str) -> dict:
+async def load_delivery_zones(session: AsyncSession = None) -> list[dict]:
+    async def _load(s):
+        result = await s.execute(
+            select(DeliveryZone).where(DeliveryZone.enabled == 1).order_by(DeliveryZone.sort_order)
+        )
+        zones = result.scalars().all()
+        return [
+            {
+                "id": f"zone_{z.id}",
+                "name": z.name,
+                "cost": z.cost,
+                "free_from": z.free_from,
+                "keywords": [kw.strip().lower() for kw in z.keywords.split(",") if kw.strip()],
+            }
+            for z in zones
+        ]
+    if session:
+        return await _load(session)
+    async with async_session() as s:
+        return await _load(s)
+
+
+async def detect_delivery_zone(address: str, session: AsyncSession = None) -> dict:
+    zones = await load_delivery_zones(session)
     addr_lower = address.lower()
-    for zone_id, zone in DELIVERY_ZONES.items():
-        if zone_id == "city":
-            continue
+    for zone in zones:
         for kw in zone["keywords"]:
             if kw in addr_lower:
-                return {"id": zone_id, **zone}
-    return {"id": "city", **DELIVERY_ZONES["city"]}
+                return zone
+    city_zone = next((z for z in zones if "родник" in z["name"].lower()), None)
+    if city_zone:
+        return city_zone
+    if zones:
+        return zones[0]
+    return {"id": "city", "name": "Город", "cost": 200, "free_from": 1000, "keywords": []}
 
 STATUS_LABELS_RU = {
     OrderStatus.NEW: "Новый",
@@ -306,7 +332,7 @@ async def handle_message(event):
 
         elif vk_id in pending_orders and pending_orders[vk_id].get("delivery_type") == "delivery" and "address" not in pending_orders[vk_id]:
             address = raw.strip()
-            zone = detect_delivery_zone(address)
+            zone = await detect_delivery_zone(address, session)
             if zone["id"] == "unknown":
                 await event.answer("К сожалению, доставка по этому адресу пока недоступна.\nДоставка работает в городе Родники и ближних населённых пунктах.\n\nУкажите другой адрес или выберите самовывоз:")
                 return

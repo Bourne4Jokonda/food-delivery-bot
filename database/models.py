@@ -103,3 +103,15 @@ class ConversationMessage(Base):
     role = Column(String, nullable=False)  # "user" or "assistant"
     message = Column(String, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class DeliveryZone(Base):
+    __tablename__ = "delivery_zones"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False)
+    cost = Column(Float, nullable=False, default=0)
+    free_from = Column(Float, nullable=True)
+    enabled = Column(Integer, default=1)
+    sort_order = Column(Integer, default=0)
+    keywords = Column(String, default="")  # comma-separated list of settlement names

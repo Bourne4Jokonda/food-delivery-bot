@@ -1,7 +1,7 @@
 import asyncio
 from sqlalchemy import select
 from database.db import engine, async_session
-from database.models import MenuItem, Base
+from database.models import MenuItem, DeliveryZone, Base
 
 
 async def init_menu():
@@ -35,6 +35,43 @@ async def init_menu():
         session.add_all(menu_items)
         await session.commit()
         print(f"Загружено {len(menu_items)} блюд в меню")
+
+    async with async_session() as session:
+        result = await session.execute(select(DeliveryZone))
+        if result.scalars().first():
+            print("Зоны доставки уже загружены")
+            return
+
+        zones = [
+            DeliveryZone(
+                name="Город Родники",
+                cost=200,
+                free_from=1000,
+                enabled=1,
+                sort_order=0,
+                keywords="родники,ул.,улица,пер.,переулок,пр.,проспект,бульвар,наб.,набережная",
+            ),
+            DeliveryZone(
+                name="Ближняя зона (до 10 км)",
+                cost=300,
+                free_from=1500,
+                enabled=1,
+                sort_order=1,
+                keywords="пригородное,борис-глеб,болтино,ахидовка,деревеньки,корцово,борщево,козлово,кутилово,становое,малышево,полощиново,савково,горяковка,цепочкино,скрылово,постнинский,воронцово,федьково,аферьково,иваниха,горкино,каменки,шелково,коево",
+            ),
+            DeliveryZone(
+                name="Дальняя зона (до 40 км)",
+                cost=400,
+                free_from=2000,
+                enabled=0,
+                sort_order=2,
+                keywords="южа,приволжск,шуя,комса",
+            ),
+        ]
+
+        session.add_all(zones)
+        await session.commit()
+        print(f"Загружено {len(zones)} зон доставки")
 
 
 if __name__ == "__main__":

@@ -9,7 +9,7 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 import os, httpx, time
 from database.db import engine, async_session, init_db
-from database.models import Base, Order, OrderItem, MenuItem, OrderStatus, User, UserRole
+from database.models import Base, Order, OrderItem, MenuItem, OrderStatus, User, UserRole, DeliveryZone
 
 
 CRM_API_KEY = os.getenv("CRM_API_KEY", "")
@@ -59,6 +59,15 @@ class StaffUpdate(BaseModel):
     vk_id: int
     role: str
     name: str = ""
+
+
+class DeliveryZoneCreate(BaseModel):
+    name: str
+    cost: float
+    free_from: float | None = None
+    enabled: bool = True
+    sort_order: int = 0
+    keywords: str = ""
 
 
 class AuthCheck(BaseModel):
@@ -373,6 +382,72 @@ async def bot_stop():
 @app.post("/api/bot/restart", dependencies=[auth_dep])
 async def bot_restart():
     return {"status": "managed_by_process", "message": "Restart via: bash stop.sh && bash start.sh"}
+
+
+@app.get("/api/delivery-zones", dependencies=[auth_dep])
+async def get_delivery_zones():
+    async with async_session() as session:
+        result = await session.execute(
+            select(DeliveryZone).order_by(DeliveryZone.sort_order)
+        )
+        zones = result.scalars().all()
+        return [
+            {
+                "id": z.id,
+                "name": z.name,
+                "cost": z.cost,
+                "free_from": z.free_from,
+                "enabled": bool(z.enabled),
+                "sort_order": z.sort_order,
+                "keywords": z.keywords,
+            }
+            for z in zones
+        ]
+
+
+@app.post("/api/delivery-zones", dependencies=[auth_dep])
+async def create_delivery_zone(zone: DeliveryZoneCreate):
+    async with async_session() as session:
+        new_zone = DeliveryZone(
+            name=zone.name,
+            cost=zone.cost,
+            free_from=zone.free_from,
+            enabled=1 if zone.enabled else 0,
+            sort_order=zone.sort_order,
+            keywords=zone.keywords,
+        )
+        session.add(new_zone)
+        await session.commit()
+        return {"id": new_zone.id, "status": "created"}
+
+
+@app.patch("/api/delivery-zones/{zone_id}", dependencies=[auth_dep])
+async def update_delivery_zone(zone_id: int, zone: DeliveryZoneCreate):
+    async with async_session() as session:
+        result = await session.execute(select(DeliveryZone).where(DeliveryZone.id == zone_id))
+        db_zone = result.scalar_one_or_none()
+        if not db_zone:
+            raise HTTPException(status_code=404, detail="Zone not found")
+        db_zone.name = zone.name
+        db_zone.cost = zone.cost
+        db_zone.free_from = zone.free_from
+        db_zone.enabled = 1 if zone.enabled else 0
+        db_zone.sort_order = zone.sort_order
+        db_zone.keywords = zone.keywords
+        await session.commit()
+        return {"status": "updated"}
+
+
+@app.delete("/api/delivery-zones/{zone_id}", dependencies=[auth_dep])
+async def delete_delivery_zone(zone_id: int):
+    async with async_session() as session:
+        result = await session.execute(select(DeliveryZone).where(DeliveryZone.id == zone_id))
+        db_zone = result.scalar_one_or_none()
+        if not db_zone:
+            raise HTTPException(status_code=404, detail="Zone not found")
+        await session.delete(db_zone)
+        await session.commit()
+        return {"status": "deleted"}
 
 
 app.mount("/crm", StaticFiles(directory=str(Path(__file__).parent / "crm")), name="crm")

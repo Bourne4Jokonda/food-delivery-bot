@@ -91,41 +91,117 @@ def test_clean_multiple_empty_lines():
 @pytest.mark.asyncio
 async def test_delivery_zone_city():
     from bot.handlers import detect_delivery_zone
-    zone = detect_delivery_zone("ул. Ленина, 10, Родники")
-    assert zone["id"] == "city"
-    assert zone["cost"] == 200
-    assert zone["free_from"] == 1000
+    from database.models import DeliveryZone
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession as TestSession
+
+    eng = create_async_engine("sqlite+aiosqlite://", echo=False)
+    async with eng.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(eng, class_=TestSession, expire_on_commit=False)
+    try:
+        async with factory() as s:
+            s.add(DeliveryZone(name="Город Родники", cost=200, free_from=1000, enabled=1, sort_order=0, keywords="родники,ул.,улица,пер.,переулок"))
+            await s.commit()
+            zone = await detect_delivery_zone("ул. Ленина, 10, Родники", s)
+            assert zone["name"] == "Город Родники"
+            assert zone["cost"] == 200
+            assert zone["free_from"] == 1000
+    finally:
+        async with eng.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+        await eng.dispose()
 
 
 @pytest.mark.asyncio
 async def test_delivery_zone_nearby():
     from bot.handlers import detect_delivery_zone
-    zone = detect_delivery_zone("д. Болтино, дом 5")
-    assert zone["id"] == "nearby"
-    assert zone["cost"] == 300
-    assert zone["free_from"] == 1500
+    from database.models import DeliveryZone
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession as TestSession
+
+    eng = create_async_engine("sqlite+aiosqlite://", echo=False)
+    async with eng.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(eng, class_=TestSession, expire_on_commit=False)
+    try:
+        async with factory() as s:
+            s.add(DeliveryZone(name="Город Родники", cost=200, free_from=1000, enabled=1, sort_order=0, keywords="родники"))
+            s.add(DeliveryZone(name="Ближняя зона", cost=300, free_from=1500, enabled=1, sort_order=1, keywords="болтино,пригородное"))
+            await s.commit()
+            zone = await detect_delivery_zone("д. Болтино, дом 5", s)
+            assert zone["name"] == "Ближняя зона"
+            assert zone["cost"] == 300
+    finally:
+        async with eng.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+        await eng.dispose()
 
 
 @pytest.mark.asyncio
 async def test_delivery_zone_unknown_defaults_to_city():
     from bot.handlers import detect_delivery_zone
-    zone = detect_delivery_zone("деревня Ромашкино")
-    assert zone["id"] == "city"
-    assert zone["cost"] == 200
+    from database.models import DeliveryZone
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession as TestSession
+
+    eng = create_async_engine("sqlite+aiosqlite://", echo=False)
+    async with eng.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(eng, class_=TestSession, expire_on_commit=False)
+    try:
+        async with factory() as s:
+            s.add(DeliveryZone(name="Город Родники", cost=200, free_from=1000, enabled=1, sort_order=0, keywords="родники"))
+            await s.commit()
+            zone = await detect_delivery_zone("деревня Ромашкино", s)
+            assert zone["name"] == "Город Родники"
+            assert zone["cost"] == 200
+    finally:
+        async with eng.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+        await eng.dispose()
 
 
 @pytest.mark.asyncio
 async def test_delivery_zone_address_partial_match():
     from bot.handlers import detect_delivery_zone
-    zone = detect_delivery_zone("Пригородное")
-    assert zone["id"] == "nearby"
+    from database.models import DeliveryZone
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession as TestSession
+
+    eng = create_async_engine("sqlite+aiosqlite://", echo=False)
+    async with eng.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(eng, class_=TestSession, expire_on_commit=False)
+    try:
+        async with factory() as s:
+            s.add(DeliveryZone(name="Город Родники", cost=200, free_from=1000, enabled=1, sort_order=0, keywords="родники"))
+            s.add(DeliveryZone(name="Ближняя зона", cost=300, free_from=1500, enabled=1, sort_order=1, keywords="пригородное"))
+            await s.commit()
+            zone = await detect_delivery_zone("Пригородное", s)
+            assert zone["name"] == "Ближняя зона"
+    finally:
+        async with eng.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+        await eng.dispose()
 
 
 @pytest.mark.asyncio
 async def test_delivery_zone_city_street():
     from bot.handlers import detect_delivery_zone
-    zone = detect_delivery_zone("пер. Садовый, 3")
-    assert zone["id"] == "city"
+    from database.models import DeliveryZone
+    from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession as TestSession
+
+    eng = create_async_engine("sqlite+aiosqlite://", echo=False)
+    async with eng.begin() as conn:
+        await conn.run_sync(Base.metadata.create_all)
+    factory = async_sessionmaker(eng, class_=TestSession, expire_on_commit=False)
+    try:
+        async with factory() as s:
+            s.add(DeliveryZone(name="Город Родники", cost=200, free_from=1000, enabled=1, sort_order=0, keywords="родники,пер."))
+            await s.commit()
+            zone = await detect_delivery_zone("пер. Садовый, 3", s)
+            assert zone["name"] == "Город Родники"
+    finally:
+        async with eng.begin() as conn:
+            await conn.run_sync(Base.metadata.drop_all)
+        await eng.dispose()
 
 
 @pytest.mark.asyncio
