@@ -410,7 +410,8 @@ async def add_to_cart_by_name(event, vk_id: int, text: str):
         all_items = result.scalars().all()
 
         found_items = []
-        parts = _re.split(r'[,]+', text)
+        text_clean = _re.sub(r'\b(\d+)\s*(шт|штуки|штука|порц|порции|порция)\b', r'\1', text, flags=_re.IGNORECASE)
+        parts = _re.split(r'\s*,\s*', text_clean)
         for part in parts:
             part = part.strip()
             qty_match = _re.search(r'(\d+)\s*$', part)
