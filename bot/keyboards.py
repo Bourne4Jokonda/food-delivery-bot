@@ -46,8 +46,6 @@ def get_payment_keyboard():
     keyboard = Keyboard(one_time=False, inline=False)
     keyboard.add(Text("💳 Карта"), color=KeyboardButtonColor.PRIMARY)
     keyboard.add(Text("💵 Наличные"), color=KeyboardButtonColor.PRIMARY)
-    keyboard.row()
-    keyboard.add(Text("📱 Онлайн"), color=KeyboardButtonColor.SECONDARY)
     return keyboard
 
 
@@ -84,4 +82,14 @@ def get_courier_keyboard(order_id: int):
     keyboard = Keyboard(one_time=True, inline=False)
     keyboard.add(Text(f"🚗 Взять {order_id}"), color=KeyboardButtonColor.PRIMARY)
     keyboard.add(Text(f"✅ Доставлен {order_id}"), color=KeyboardButtonColor.POSITIVE)
+    return keyboard
+
+
+def get_delivery_time_keyboard(order_id: int):
+    keyboard = Keyboard(one_time=True, inline=False)
+    keyboard.add(Text(f"⏱ 20 мин {order_id}"), color=KeyboardButtonColor.PRIMARY)
+    keyboard.add(Text(f"⏱ 30 мин {order_id}"), color=KeyboardButtonColor.PRIMARY)
+    keyboard.row()
+    keyboard.add(Text(f"⏱ 40 мин {order_id}"), color=KeyboardButtonColor.SECONDARY)
+    keyboard.add(Text(f"⏱ 50 мин {order_id}"), color=KeyboardButtonColor.SECONDARY)
     return keyboard

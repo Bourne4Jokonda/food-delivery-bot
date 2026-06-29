@@ -38,13 +38,11 @@ const DELIVERY_ICON = {
 };
 const PAYMENT_ICON = {
   card: 'fa-credit-card',
-  cash: 'fa-money-bill-wave',
-  online: 'fa-globe'
+  cash: 'fa-money-bill-wave'
 };
 const PAYMENT_LABEL = {
   card: 'Карта',
-  cash: 'Наличные',
-  online: 'Онлайн'
+  cash: 'Наличные'
 };
 const CAT_MAP = {
   'Пицца': 'cat-pizza',
@@ -840,7 +838,23 @@ const App = () => {
     style: {
       fontWeight: 600
     }
-  }, item.price * item.quantity, "₽")))), /*#__PURE__*/React.createElement("div", {
+  }, item.price * item.quantity, "₽")))), orderDetail.delivery_cost > 0 && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      padding: '8px 0',
+      fontSize: 14,
+      color: '#95D5B2'
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "Доставка"), /*#__PURE__*/React.createElement("span", null, orderDetail.delivery_cost, "₽")), orderDetail.delivery_estimated_minutes && /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      justifyContent: 'space-between',
+      padding: '8px 0',
+      fontSize: 14,
+      color: '#95D5B2'
+    }
+  }, /*#__PURE__*/React.createElement("span", null, "Ожидаемое время"), /*#__PURE__*/React.createElement("span", null, orderDetail.delivery_estimated_minutes, " мин")), /*#__PURE__*/React.createElement("div", {
     className: "order-detail-total"
   }, /*#__PURE__*/React.createElement("span", null, "Итого"), /*#__PURE__*/React.createElement("span", {
     style: {

@@ -57,8 +57,10 @@ class Order(Base):
     client_id = Column(Integer, ForeignKey("users.id"))
     status = Column(Enum(OrderStatus), default=OrderStatus.NEW)
     total_price = Column(Float, default=0)
+    delivery_cost = Column(Float, default=0)
+    delivery_estimated_minutes = Column(Integer, nullable=True)
     delivery_type = Column(String)  # "delivery" or "pickup"
-    payment_method = Column(String)  # "card", "cash", "online"
+    payment_method = Column(String)  # "card" or "cash"
     notify_level = Column(String, default="all")  # "all" or "key_only"
     address = Column(String)
     created_at = Column(DateTime, default=datetime.utcnow)
