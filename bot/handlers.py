@@ -235,6 +235,7 @@ async def handle_message(event):
         is_greeting = any(g in text for g in greetings)
 
         if is_greeting:
+            pending_orders.pop(vk_id, None)
             await event.answer(
                 "Добро пожаловать в 'Вкусная Доставка'!\n\nЯ ваш персональный помощник. Чем могу помочь?",
                 keyboard=get_main_menu_keyboard()
@@ -331,7 +332,7 @@ async def handle_message(event):
             del pending_orders[vk_id]["awaiting_phone"]
             await event.answer("Как будете оплачивать?", keyboard=get_payment_keyboard())
 
-        elif vk_id in pending_orders and "payment" not in pending_orders.get(vk_id, {}):
+        elif vk_id in pending_orders and pending_orders[vk_id].get("delivery_type") and "payment" not in pending_orders[vk_id]:
             text_lower = text.lower()
             if "карта" in text_lower or "наличн" in text_lower:
                 await process_order(event, vk_id, session)
