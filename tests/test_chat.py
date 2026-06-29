@@ -107,10 +107,11 @@ async def test_delivery_zone_nearby():
 
 
 @pytest.mark.asyncio
-async def test_delivery_zone_unknown():
+async def test_delivery_zone_unknown_defaults_to_city():
     from bot.handlers import detect_delivery_zone
     zone = detect_delivery_zone("деревня Ромашкино")
-    assert zone["id"] == "unknown"
+    assert zone["id"] == "city"
+    assert zone["cost"] == 200
 
 
 @pytest.mark.asyncio

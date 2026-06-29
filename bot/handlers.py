@@ -62,10 +62,12 @@ CATEGORY_MAP = {
 def detect_delivery_zone(address: str) -> dict:
     addr_lower = address.lower()
     for zone_id, zone in DELIVERY_ZONES.items():
+        if zone_id == "city":
+            continue
         for kw in zone["keywords"]:
             if kw in addr_lower:
                 return {"id": zone_id, **zone}
-    return {"id": "unknown", "name": "За пределами зоны", "cost": 0, "free_from": None, "keywords": []}
+    return {"id": "city", **DELIVERY_ZONES["city"]}
 
 STATUS_LABELS_RU = {
     OrderStatus.NEW: "Новый",
@@ -266,9 +268,6 @@ async def handle_message(event):
         elif ("доставка" in text or "самовывоз" in text) and vk_id in pending_orders and not pending_orders[vk_id]:
             await handle_delivery_choice(event, vk_id, text)
 
-        elif any(w in text for w in ("карта", "наличн")) and vk_id in pending_orders:
-            await handle_delivery_choice(event, vk_id, text)
-
         elif "все статусы" in text and vk_id in pending_notify:
             order_id = pending_notify.pop(vk_id)
             async with async_session() as session:
@@ -331,6 +330,13 @@ async def handle_message(event):
             await session.commit()
             del pending_orders[vk_id]["awaiting_phone"]
             await event.answer("Как будете оплачивать?", keyboard=get_payment_keyboard())
+
+        elif vk_id in pending_orders and "payment" not in pending_orders.get(vk_id, {}):
+            text_lower = text.lower()
+            if "карта" in text_lower or "наличн" in text_lower:
+                await process_order(event, vk_id, session)
+            else:
+                await event.answer("Выберите способ оплаты:", keyboard=get_payment_keyboard())
 
         elif "очистить" in text:
             await clear_cart(vk_id)
@@ -605,110 +611,115 @@ async def handle_delivery_choice(event, vk_id: int, text: str):
         async with async_session() as session:
             user = await get_or_create_user(vk_id, session)
             if user.phone:
+                pending_orders[vk_id]["payment"] = None
                 await event.answer("Как будете оплачивать?", keyboard=get_payment_keyboard())
             else:
                 pending_orders[vk_id]["awaiting_phone"] = True
                 await event.answer("Укажите номер телефона для связи:")
-    elif "карта" in text or "наличн" in text:
-        if vk_id not in pending_orders:
-            await event.answer("Сначала выберите тип получения", keyboard=get_main_menu_keyboard())
-            return
 
-        payment_map = {"карта": "card", "наличн": "cash"}
-        payment_label = {"card": "💳 Карта", "cash": "💵 Наличные"}
 
-        payment = None
-        for key, val in payment_map.items():
-            if key in text:
-                payment = val
-                break
+async def process_order(event, vk_id: int, session: AsyncSession):
+    payment_map = {"карта": "card", "наличн": "cash"}
+    payment_label = {"card": "💳 Карта", "cash": "💵 Наличные"}
+    text = strip_buttons(event.text.strip()).lower()
 
-        pending_orders[vk_id]["payment"] = payment
+    payment = None
+    for key, val in payment_map.items():
+        if key in text:
+            payment = val
+            break
 
-        async with async_session() as session:
-            user = await get_or_create_user(vk_id, session)
-            total = 0
-            for ci in cart:
-                result = await session.execute(select(MenuItem).where(MenuItem.id == ci["id"]))
-                mi = result.scalar_one()
-                total += mi.price * ci["quantity"]
-
-            delivery_type = pending_orders[vk_id]["delivery_type"]
-            delivery_cost = pending_orders[vk_id].get("delivery_cost", 0) if delivery_type == "delivery" else 0
-            grand_total = total + delivery_cost
-            address = pending_orders[vk_id].get("address", "Самовывоз") if delivery_type == "pickup" else pending_orders[vk_id].get("address", "")
-            order = Order(
-                client_id=user.id,
-                delivery_type=delivery_type,
-                payment_method=payment,
-                address=address,
-                total_price=grand_total,
-                delivery_cost=delivery_cost,
-                status=OrderStatus.NEW
-            )
-            session.add(order)
-            await session.flush()
-
-            for ci in cart:
-                result = await session.execute(select(MenuItem).where(MenuItem.id == ci["id"]))
-                mi = result.scalar_one()
-                item = OrderItem(
-                    order_id=order.id,
-                    menu_item_id=mi.id,
-                    quantity=ci["quantity"],
-                    price=mi.price
-                )
-                session.add(item)
-
-            await session.commit()
-            await clear_cart(vk_id, session)
-            del pending_orders[vk_id]
-
-            delivery_text = "🚗 Доставка" if delivery_type == "delivery" else "🚶 Самовывоз"
-            pay_text = payment_label.get(payment, payment)
-            address_line = f"\nАдрес: {address}" if delivery_type == "delivery" and address else ""
-            delivery_cost_line = f"\nДоставка: {delivery_cost}₽" if delivery_cost > 0 else ("\nДоставка: бесплатно ✓" if delivery_type == "delivery" else "")
-
-            confirm_msg = (
-                f"Заказ #{order.id} оформлен!\n"
-                f"{delivery_text}"
-                f"{address_line}\n"
-                f"Оплата: {pay_text}\n"
-                f"Блюда: {total}₽"
-                f"{delivery_cost_line}\n"
-                f"Итого: {grand_total}₽\n\n"
-            )
-            if delivery_type == "pickup":
-                confirm_msg += "Ждём вас в ресторане в течение 15-20 минут!"
-            else:
-                confirm_msg += "🚗 Ожидайте доставку в течение 30-60 минут!"
-
-            pending_notify[vk_id] = order.id
-            await event.answer(confirm_msg + "\n\nКак уведомлять о статусе заказа?", keyboard=get_notify_keyboard())
-
-            try:
-                items_text = ""
-                for ci in cart:
-                    result3 = await session.execute(select(MenuItem).where(MenuItem.id == ci["id"]))
-                    mi3 = result3.scalar_one()
-                    items_text += f"  • {mi3.name} x{ci['quantity']} — {mi3.price * ci['quantity']}₽\n"
-                admin_msg = (
-                    f"📦 Новый заказ #{order.id}!\n\n"
-                    f"{delivery_text}\n"
-                    f"{address_line}\n"
-                    f"Оплата: {pay_text}\n\n"
-                    f"{items_text}\n"
-                    f"Доставка: {delivery_cost}₽\n"
-                    f"Итого: {grand_total}₽"
-                )
-                if ADMIN_CHAT_ID:
-                    await send_vk_message(0, admin_msg, chat_id=ADMIN_CHAT_ID, keyboard=get_order_action_keyboard(order.id))
-                else:
-                    await notify_staff_by_role(UserRole.ADMIN, admin_msg, order_id=order.id)
-            except Exception as e:
-                logger.error(f"Admin notification failed for order #{order.id}: {e}")
-    else:
+    if not payment:
         await event.answer("Выберите способ оплаты:", keyboard=get_payment_keyboard())
+        return
+
+    pending_orders[vk_id]["payment"] = payment
+    cart = await get_cart(vk_id, session)
+    if not cart:
+        await event.answer("Корзина пуста", keyboard=get_main_menu_keyboard())
+        return
+
+    user = await get_or_create_user(vk_id, session)
+    total = 0
+    for ci in cart:
+        result = await session.execute(select(MenuItem).where(MenuItem.id == ci["id"]))
+        mi = result.scalar_one()
+        total += mi.price * ci["quantity"]
+
+    delivery_type = pending_orders[vk_id]["delivery_type"]
+    delivery_cost = pending_orders[vk_id].get("delivery_cost", 0) if delivery_type == "delivery" else 0
+    grand_total = total + delivery_cost
+    address = pending_orders[vk_id].get("address", "Самовывоз") if delivery_type == "pickup" else pending_orders[vk_id].get("address", "")
+    order = Order(
+        client_id=user.id,
+        delivery_type=delivery_type,
+        payment_method=payment,
+        address=address,
+        total_price=grand_total,
+        delivery_cost=delivery_cost,
+        status=OrderStatus.NEW
+    )
+    session.add(order)
+    await session.flush()
+
+    for ci in cart:
+        result = await session.execute(select(MenuItem).where(MenuItem.id == ci["id"]))
+        mi = result.scalar_one()
+        item = OrderItem(
+            order_id=order.id,
+            menu_item_id=mi.id,
+            quantity=ci["quantity"],
+            price=mi.price
+        )
+        session.add(item)
+
+    await session.commit()
+    await clear_cart(vk_id, session)
+    del pending_orders[vk_id]
+
+    delivery_text = "🚗 Доставка" if delivery_type == "delivery" else "🚶 Самовывоз"
+    pay_text = payment_label.get(payment, payment)
+    address_line = f"\nАдрес: {address}" if delivery_type == "delivery" and address else ""
+    delivery_cost_line = f"\nДоставка: {delivery_cost}₽" if delivery_cost > 0 else ("\nДоставка: бесплатно ✓" if delivery_type == "delivery" else "")
+
+    confirm_msg = (
+        f"Заказ #{order.id} оформлен!\n"
+        f"{delivery_text}"
+        f"{address_line}\n"
+        f"Оплата: {pay_text}\n"
+        f"Блюда: {total}₽"
+        f"{delivery_cost_line}\n"
+        f"Итого: {grand_total}₽\n\n"
+    )
+    if delivery_type == "pickup":
+        confirm_msg += "Ждём вас в ресторане в течение 15-20 минут!"
+    else:
+        confirm_msg += "🚗 Ожидайте доставку в течение 30-60 минут!"
+
+    pending_notify[vk_id] = order.id
+    await event.answer(confirm_msg + "\n\nКак уведомлять о статусе заказа?", keyboard=get_notify_keyboard())
+
+    try:
+        items_text = ""
+        for ci in cart:
+            result3 = await session.execute(select(MenuItem).where(MenuItem.id == ci["id"]))
+            mi3 = result3.scalar_one()
+            items_text += f"  • {mi3.name} x{ci['quantity']} — {mi3.price * ci['quantity']}₽\n"
+        admin_msg = (
+            f"📦 Новый заказ #{order.id}!\n\n"
+            f"{delivery_text}\n"
+            f"{address_line}\n"
+            f"Оплата: {pay_text}\n\n"
+            f"{items_text}\n"
+            f"Доставка: {delivery_cost}₽\n"
+            f"Итого: {grand_total}₽"
+        )
+        if ADMIN_CHAT_ID:
+            await send_vk_message(0, admin_msg, chat_id=ADMIN_CHAT_ID, keyboard=get_order_action_keyboard(order.id))
+        else:
+            await notify_staff_by_role(UserRole.ADMIN, admin_msg, order_id=order.id)
+    except Exception as e:
+        logger.error(f"Admin notification failed for order #{order.id}: {e}")
 
 
 async def show_user_orders(event, vk_id: int):
