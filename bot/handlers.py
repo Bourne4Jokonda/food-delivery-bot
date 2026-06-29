@@ -578,15 +578,6 @@ async def handle_ai_chat(event, vk_id: int, text: str):
             response = clean_response
         await add_conversation_message(vk_id, "assistant", response)
         await event.answer(response, keyboard=get_main_menu_keyboard())
-                cart_text = clean_response + "\n\n" + cart_text
-            await event.answer(cart_text, keyboard=get_cart_keyboard())
-        else:
-            await event.answer(clean_response or response, keyboard=get_main_menu_keyboard())
-    else:
-        if clean_response:
-            response = clean_response
-        await add_conversation_message(vk_id, "assistant", response)
-        await event.answer(response, keyboard=get_main_menu_keyboard())
 
 
 async def start_order(event, vk_id: int):
