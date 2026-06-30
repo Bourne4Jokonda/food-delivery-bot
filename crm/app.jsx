@@ -610,11 +610,16 @@ const { useState, useEffect, useCallback } = React;
                         <div className="modal-overlay" onClick={() => setZoneModal(null)}>
                             <div className="modal glass neo" onClick={(e) => e.stopPropagation()}>
                                 <h2><i className={`fa-solid ${zoneModal === 'new' ? 'fa-plus' : 'fa-pen'}`} style={{marginRight: 8}}></i>{zoneModal === 'new' ? 'Новая зона' : 'Редактировать зону'}</h2>
-                                <input placeholder="Название зоны" value={newZone.name} onChange={e => setNewZone({...newZone, name: e.target.value})} />
-                                <input placeholder="Стоимость доставки (₽)" type="number" value={newZone.cost} onChange={e => setNewZone({...newZone, cost: e.target.value})} />
-                                <input placeholder="Бесплатно от (₽, необязательно)" type="number" value={newZone.free_from} onChange={e => setNewZone({...newZone, free_from: e.target.value})} />
-                                <input placeholder="Порядок сортировки" type="number" value={newZone.sort_order} onChange={e => setNewZone({...newZone, sort_order: e.target.value})} />
-                                <input placeholder="Ключевые слова через запятую" value={newZone.keywords} onChange={e => setNewZone({...newZone, keywords: e.target.value})} />
+                                <label style={{fontSize: 12, color: '#8cc8a0', marginBottom: 4, display: 'block'}}>Название</label>
+                                <input placeholder="Например: Город Родники" value={newZone.name} onChange={e => setNewZone({...newZone, name: e.target.value})} />
+                                <label style={{fontSize: 12, color: '#8cc8a0', marginBottom: 4, display: 'block'}}>Стоимость доставки (₽)</label>
+                                <input placeholder="200" type="number" value={newZone.cost} onChange={e => setNewZone({...newZone, cost: e.target.value})} />
+                                <label style={{fontSize: 12, color: '#8cc8a0', marginBottom: 4, display: 'block'}}>Бесплатно от (₽)</label>
+                                <input placeholder="Оставьте пустым, если не нужно" type="number" value={newZone.free_from} onChange={e => setNewZone({...newZone, free_from: e.target.value})} />
+                                <label style={{fontSize: 12, color: '#8cc8a0', marginBottom: 4, display: 'block'}}>Порядок сортировки</label>
+                                <input placeholder="0 — первая зона" type="number" value={newZone.sort_order} onChange={e => setNewZone({...newZone, sort_order: e.target.value})} />
+                                <label style={{fontSize: 12, color: '#8cc8a0', marginBottom: 4, display: 'block'}}>Ключевые слова (через запятую)</label>
+                                <input placeholder="родники,ул.,улица,пер." value={newZone.keywords} onChange={e => setNewZone({...newZone, keywords: e.target.value})} />
                                 <label style={{display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', fontSize: 14, cursor: 'pointer'}}>
                                     <input type="checkbox" checked={newZone.enabled} onChange={e => setNewZone({...newZone, enabled: e.target.checked})} style={{width: 18, height: 18}} />
                                     Зона активна

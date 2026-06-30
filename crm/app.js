@@ -1211,39 +1211,74 @@ const App = () => {
     style: {
       marginRight: 8
     }
-  }), zoneModal === 'new' ? 'Новая зона' : 'Редактировать зону'), /*#__PURE__*/React.createElement("input", {
-    placeholder: "Название зоны",
+  }), zoneModal === 'new' ? 'Новая зона' : 'Редактировать зону'), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 12,
+      color: '#8cc8a0',
+      marginBottom: 4,
+      display: 'block'
+    }
+  }, "Название"), /*#__PURE__*/React.createElement("input", {
+    placeholder: "Например: Город Родники",
     value: newZone.name,
     onChange: e => setNewZone({
       ...newZone,
       name: e.target.value
     })
-  }), /*#__PURE__*/React.createElement("input", {
-    placeholder: "Стоимость доставки (₽)",
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 12,
+      color: '#8cc8a0',
+      marginBottom: 4,
+      display: 'block'
+    }
+  }, "Стоимость доставки (₽)"), /*#__PURE__*/React.createElement("input", {
+    placeholder: "200",
     type: "number",
     value: newZone.cost,
     onChange: e => setNewZone({
       ...newZone,
       cost: e.target.value
     })
-  }), /*#__PURE__*/React.createElement("input", {
-    placeholder: "Бесплатно от (₽, необязательно)",
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 12,
+      color: '#8cc8a0',
+      marginBottom: 4,
+      display: 'block'
+    }
+  }, "Бесплатно от (₽)"), /*#__PURE__*/React.createElement("input", {
+    placeholder: "Оставьте пустым, если не нужно",
     type: "number",
     value: newZone.free_from,
     onChange: e => setNewZone({
       ...newZone,
       free_from: e.target.value
     })
-  }), /*#__PURE__*/React.createElement("input", {
-    placeholder: "Порядок сортировки",
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 12,
+      color: '#8cc8a0',
+      marginBottom: 4,
+      display: 'block'
+    }
+  }, "Порядок сортировки"), /*#__PURE__*/React.createElement("input", {
+    placeholder: "0 — первая зона",
     type: "number",
     value: newZone.sort_order,
     onChange: e => setNewZone({
       ...newZone,
       sort_order: e.target.value
     })
-  }), /*#__PURE__*/React.createElement("input", {
-    placeholder: "Ключевые слова через запятую",
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 12,
+      color: '#8cc8a0',
+      marginBottom: 4,
+      display: 'block'
+    }
+  }, "Ключевые слова (через запятую)"), /*#__PURE__*/React.createElement("input", {
+    placeholder: "родники,ул.,улица,пер.",
     value: newZone.keywords,
     onChange: e => setNewZone({
       ...newZone,
