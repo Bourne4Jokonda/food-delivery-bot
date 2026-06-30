@@ -411,11 +411,11 @@ const App = () => {
     }, "🍕"), /*#__PURE__*/React.createElement("h2", {
       style: {
         marginBottom: 8,
-        color: '#D8F3DC'
+        color: '#e0f0e5'
       }
     }, "Вкусная Доставка — CRM"), /*#__PURE__*/React.createElement("p", {
       style: {
-        color: '#95D5B2',
+        color: '#8cc8a0',
         marginBottom: 24,
         fontSize: 14
       }
@@ -430,10 +430,10 @@ const App = () => {
       style: {
         width: '100%',
         padding: '12px 14px',
-        background: 'rgba(119,200,148,0.08)',
-        border: '1px solid rgba(119,200,148,0.12)',
+        background: 'rgba(15,26,20,0.8)',
+        border: '1px solid rgba(100,180,120,0.25)',
         borderRadius: 10,
-        color: '#D8F3DC',
+        color: '#e0f0e5',
         fontSize: 14,
         marginBottom: 12,
         outline: 'none',
@@ -441,7 +441,7 @@ const App = () => {
       }
     }), loginError && /*#__PURE__*/React.createElement("div", {
       style: {
-        color: '#e88',
+        color: '#f87171',
         fontSize: 13,
         marginBottom: 12
       }
@@ -533,8 +533,8 @@ const App = () => {
   }), " Бот ", /*#__PURE__*/React.createElement("span", {
     className: "badge",
     style: {
-      background: botStatus.running ? 'rgba(64,192,87,0.25)' : 'rgba(180,60,60,0.2)',
-      color: botStatus.running ? '#40C057' : '#e88'
+      background: botStatus.running ? 'rgba(64,192,87,0.3)' : 'rgba(220,60,60,0.25)',
+      color: botStatus.running ? '#5cdb7e' : '#f87171'
     }
   }, botStatus.running ? 'ON' : 'OFF')), /*#__PURE__*/React.createElement("button", {
     className: `tab ${tab === 'staff' ? 'active' : ''}`,
@@ -690,8 +690,8 @@ const App = () => {
       width: 12,
       height: 12,
       borderRadius: '50%',
-      background: botStatus.running ? '#40C057' : '#e55',
-      boxShadow: botStatus.running ? '0 0 12px rgba(64,192,87,0.5)' : '0 0 12px rgba(238,85,85,0.5)'
+      background: botStatus.running ? '#5cdb7e' : '#f87171',
+      boxShadow: botStatus.running ? '0 0 12px rgba(64,192,87,0.5)' : '0 0 12px rgba(220,60,60,0.5)'
     }
   }), /*#__PURE__*/React.createElement("span", {
     style: {
@@ -714,7 +714,7 @@ const App = () => {
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#95D5B2',
+      color: '#8cc8a0',
       textTransform: 'uppercase',
       marginBottom: 4
     }
@@ -732,7 +732,7 @@ const App = () => {
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#95D5B2',
+      color: '#8cc8a0',
       textTransform: 'uppercase',
       marginBottom: 4
     }
@@ -750,7 +750,7 @@ const App = () => {
   }, /*#__PURE__*/React.createElement("div", {
     style: {
       fontSize: 11,
-      color: '#95D5B2',
+      color: '#8cc8a0',
       textTransform: 'uppercase',
       marginBottom: 4
     }
@@ -820,7 +820,7 @@ const App = () => {
       fontFamily: 'monospace',
       fontSize: 12,
       lineHeight: 1.6,
-      color: '#95D5B2'
+      color: '#8cc8a0'
     }
   }, botLogs.length === 0 ? /*#__PURE__*/React.createElement("div", {
     style: {
@@ -832,7 +832,7 @@ const App = () => {
     key: i,
     style: {
       padding: '2px 0',
-      borderBottom: '1px solid rgba(119,200,148,0.05)'
+      borderBottom: '1px solid rgba(100,180,120,0.08)'
     }
   }, line))))), tab === 'staff' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "panel glass"
@@ -861,7 +861,7 @@ const App = () => {
     key: s.id,
     style: {
       padding: '16px 24px',
-      borderBottom: '1px solid rgba(119,200,148,0.05)',
+      borderBottom: '1px solid rgba(100,180,120,0.08)',
       display: 'flex',
       justifyContent: 'space-between',
       alignItems: 'center'
@@ -875,7 +875,7 @@ const App = () => {
     style: {
       marginLeft: 8,
       fontSize: 12,
-      color: '#95D5B2',
+      color: '#8cc8a0',
       fontWeight: 400
     }
   }, "VK ID: ", s.vk_id)), /*#__PURE__*/React.createElement("div", {
@@ -889,7 +889,7 @@ const App = () => {
       fontSize: 12,
       fontWeight: 600,
       background: s.role === 'admin' ? 'rgba(64,192,87,0.2)' : s.role === 'kitchen' ? 'rgba(255,193,7,0.2)' : 'rgba(82,183,136,0.2)',
-      color: s.role === 'admin' ? '#40C057' : s.role === 'kitchen' ? '#FFC107' : '#52B788'
+      color: s.role === 'admin' ? '#5cdb7e' : s.role === 'kitchen' ? '#FFD060' : '#60c0e8'
     }
   }, s.role === 'admin' ? '👑 Админ' : s.role === 'kitchen' ? '👨‍🍳 Кухня' : '🚗 Курьер'))), /*#__PURE__*/React.createElement("button", {
     className: "btn btn-danger",
@@ -900,10 +900,10 @@ const App = () => {
     style: {
       marginTop: 16,
       padding: 16,
-      background: 'rgba(119,200,148,0.06)',
+      background: 'rgba(30,60,42,0.5)',
       borderRadius: 12,
       fontSize: 13,
-      color: '#95D5B2',
+      color: '#8cc8a0',
       lineHeight: 1.6
     }
   }, /*#__PURE__*/React.createElement("i", {
@@ -913,7 +913,7 @@ const App = () => {
     }
   }), "Сотрудники получают уведомления в личные сообщения VK. Чтобы узнать VK ID — попросите сотрудника написать боту ", /*#__PURE__*/React.createElement("code", {
     style: {
-      background: 'rgba(64,192,87,0.15)',
+      background: 'rgba(64,192,87,0.2)',
       padding: '2px 6px',
       borderRadius: 4
     }
@@ -952,77 +952,41 @@ const App = () => {
     }
   }), "Нет зон доставки") : zones.map(zone => /*#__PURE__*/React.createElement("div", {
     key: zone.id,
-    style: {
-      padding: '16px 24px',
-      borderBottom: '1px solid rgba(119,200,148,0.05)',
-      display: 'flex',
-      justifyContent: 'space-between',
-      alignItems: 'center'
-    }
+    className: "zone-item"
   }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      flex: 1
-    }
+    className: "zone-top"
   }, /*#__PURE__*/React.createElement("div", {
-    style: {
-      fontWeight: 600,
-      fontSize: 15
-    }
+    className: "zone-info"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "zone-name"
   }, zone.name, /*#__PURE__*/React.createElement("span", {
-    style: {
-      marginLeft: 8,
-      fontSize: 12,
-      padding: '2px 8px',
-      borderRadius: 6,
-      background: zone.enabled ? 'rgba(64,192,87,0.2)' : 'rgba(180,60,60,0.2)',
-      color: zone.enabled ? '#40C057' : '#e88'
-    }
+    className: `zone-tag ${zone.enabled ? 'on' : 'off'}`
   }, zone.enabled ? 'Вкл' : 'Выкл')), /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 4,
-      fontSize: 13,
-      color: '#95D5B2'
-    }
+    className: "zone-meta"
   }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-ruble-sign",
     style: {
       marginRight: 4
     }
-  }), zone.cost, "₽"), zone.free_from && /*#__PURE__*/React.createElement("span", {
-    style: {
-      marginLeft: 12
-    }
-  }, /*#__PURE__*/React.createElement("i", {
+  }), zone.cost, "₽"), zone.free_from && /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-gift",
     style: {
       marginRight: 4
     }
-  }), "Бесплатно от ", zone.free_from, "₽"), /*#__PURE__*/React.createElement("span", {
-    style: {
-      marginLeft: 12
-    }
-  }, /*#__PURE__*/React.createElement("i", {
+  }), "Бесплатно от ", zone.free_from, "₽"), /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-arrow-down-short-wide",
     style: {
       marginRight: 4
     }
   }), "Порядок: ", zone.sort_order)), zone.keywords && /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 4,
-      fontSize: 12,
-      color: '#77C894'
-    }
+    className: "zone-keywords"
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-key",
     style: {
       marginRight: 4
     }
   }), zone.keywords)), /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      gap: 8,
-      flexShrink: 0
-    }
+    className: "zone-actions"
   }, /*#__PURE__*/React.createElement("button", {
     className: "btn btn-primary",
     onClick: () => openEditZone(zone)
@@ -1033,14 +997,14 @@ const App = () => {
     onClick: () => deleteZone(zone.id)
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-trash"
-  })))))), /*#__PURE__*/React.createElement("div", {
+  }))))))), /*#__PURE__*/React.createElement("div", {
     style: {
       marginTop: 16,
       padding: 16,
-      background: 'rgba(119,200,148,0.06)',
+      background: 'rgba(30,60,42,0.5)',
       borderRadius: 12,
       fontSize: 13,
-      color: '#95D5B2',
+      color: '#8cc8a0',
       lineHeight: 1.6
     }
   }, /*#__PURE__*/React.createElement("i", {
@@ -1115,7 +1079,7 @@ const App = () => {
     className: "order-detail-total"
   }, /*#__PURE__*/React.createElement("span", null, "Итого"), /*#__PURE__*/React.createElement("span", {
     style: {
-      color: '#40C057'
+      color: '#5cdb7e'
     }
   }, orderDetail.total_price, "₽")), /*#__PURE__*/React.createElement("div", {
     className: "btn-row"

@@ -228,13 +228,13 @@ const { useState, useEffect, useCallback } = React;
                     <div className="app" style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh'}}>
                         <div className="glass neo" style={{padding:40,width:380,textAlign:'center'}}>
                             <div style={{fontSize:48,marginBottom:16}}>🍕</div>
-                            <h2 style={{marginBottom:8,color:'#D8F3DC'}}>Вкусная Доставка — CRM</h2>
-                            <p style={{color:'#95D5B2',marginBottom:24,fontSize:14}}>Введите API-ключ для доступа</p>
+                            <h2 style={{marginBottom:8,color:'#e0f0e5'}}>Вкусная Доставка — CRM</h2>
+                            <p style={{color:'#8cc8a0',marginBottom:24,fontSize:14}}>Введите API-ключ для доступа</p>
                             <input type="password" placeholder="API ключ" value={loginKey}
                                 onChange={e => setLoginKey(e.target.value)}
                                 onKeyDown={e => { if (e.key === 'Enter') doLogin(); }}
-                                style={{width:'100%',padding:'12px 14px',background:'rgba(119,200,148,0.08)',border:'1px solid rgba(119,200,148,0.12)',borderRadius:10,color:'#D8F3DC',fontSize:14,marginBottom:12,outline:'none',textAlign:'center'}} />
-                            {loginError && <div style={{color:'#e88',fontSize:13,marginBottom:12}}>{loginError}</div>}
+                                style={{width:'100%',padding:'12px 14px',background:'rgba(15,26,20,0.8)',border:'1px solid rgba(100,180,120,0.25)',borderRadius:10,color:'#e0f0e5',fontSize:14,marginBottom:12,outline:'none',textAlign:'center'}} />
+                            {loginError && <div style={{color:'#f87171',fontSize:13,marginBottom:12}}>{loginError}</div>}
                             <button className="btn btn-success" onClick={doLogin} style={{width:'100%',padding:'12px 0',fontSize:14}}>Войти</button>
                         </div>
                     </div>
@@ -282,7 +282,7 @@ const { useState, useEffect, useCallback } = React;
                             <i className="fa-solid fa-utensils"></i> Меню <span className="badge">{menu.length}</span>
                         </button>
                         <button className={`tab ${tab === 'bot' ? 'active' : ''}`} onClick={() => setTab('bot')}>
-                            <i className="fa-solid fa-robot"></i> Бот <span className="badge" style={{background: botStatus.running ? 'rgba(64,192,87,0.25)' : 'rgba(180,60,60,0.2)', color: botStatus.running ? '#40C057' : '#e88'}}>{botStatus.running ? 'ON' : 'OFF'}</span>
+                            <i className="fa-solid fa-robot"></i> Бот <span className="badge" style={{background: botStatus.running ? 'rgba(64,192,87,0.3)' : 'rgba(220,60,60,0.25)', color: botStatus.running ? '#5cdb7e' : '#f87171'}}>{botStatus.running ? 'ON' : 'OFF'}</span>
                         </button>
                         <button className={`tab ${tab === 'staff' ? 'active' : ''}`} onClick={() => setTab('staff')}>
                             <i className="fa-solid fa-users"></i> Сотрудники
@@ -371,21 +371,21 @@ const { useState, useEffect, useCallback } = React;
                                 </div>
                                 <div style={{padding: 24}}>
                                     <div style={{display: 'flex', alignItems: 'center', gap: 16, marginBottom: 20}}>
-                                        <div style={{width: 12, height: 12, borderRadius: '50%', background: botStatus.running ? '#40C057' : '#e55', boxShadow: botStatus.running ? '0 0 12px rgba(64,192,87,0.5)' : '0 0 12px rgba(238,85,85,0.5)'}}></div>
+                                        <div style={{width: 12, height: 12, borderRadius: '50%', background: botStatus.running ? '#5cdb7e' : '#f87171', boxShadow: botStatus.running ? '0 0 12px rgba(64,192,87,0.5)' : '0 0 12px rgba(220,60,60,0.5)'}}></div>
                                         <span style={{fontSize: 18, fontWeight: 600}}>{botStatus.running ? 'Бот работает' : 'Бот остановлен'}</span>
                                     </div>
                                     {botStatus.running && (
                                         <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: 16, marginBottom: 20}}>
                                             <div style={{background: 'rgba(64,192,87,0.08)', padding: 14, borderRadius: 12}}>
-                                                <div style={{fontSize: 11, color: '#95D5B2', textTransform: 'uppercase', marginBottom: 4}}>PID</div>
+                                                <div style={{fontSize: 11, color: '#8cc8a0', textTransform: 'uppercase', marginBottom: 4}}>PID</div>
                                                 <div style={{fontSize: 18, fontWeight: 700}}>{botStatus.pid}</div>
                                             </div>
                                             <div style={{background: 'rgba(64,192,87,0.08)', padding: 14, borderRadius: 12}}>
-                                                <div style={{fontSize: 11, color: '#95D5B2', textTransform: 'uppercase', marginBottom: 4}}>Время работы</div>
+                                                <div style={{fontSize: 11, color: '#8cc8a0', textTransform: 'uppercase', marginBottom: 4}}>Время работы</div>
                                                 <div style={{fontSize: 18, fontWeight: 700}}>{botStatus.uptime || '—'}</div>
                                             </div>
                                             <div style={{background: 'rgba(64,192,87,0.08)', padding: 14, borderRadius: 12}}>
-                                                <div style={{fontSize: 11, color: '#95D5B2', textTransform: 'uppercase', marginBottom: 4}}>RAM</div>
+                                                <div style={{fontSize: 11, color: '#8cc8a0', textTransform: 'uppercase', marginBottom: 4}}>RAM</div>
                                                 <div style={{fontSize: 18, fontWeight: 700}}>{botStatus.ram_mb ? botStatus.ram_mb + ' MB' : '—'}</div>
                                             </div>
                                         </div>
@@ -416,11 +416,11 @@ const { useState, useEffect, useCallback } = React;
                                 <div className="panel-header">
                                     <h2><i className="fa-solid fa-terminal" style={{marginRight: 8}}></i>Логи бота</h2>
                                 </div>
-                                <div style={{padding: 16, maxHeight: 400, overflowY: 'auto', fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, color: '#95D5B2'}}>
+                                <div style={{padding: 16, maxHeight: 400, overflowY: 'auto', fontFamily: 'monospace', fontSize: 12, lineHeight: 1.6, color: '#8cc8a0'}}>
                                     {botLogs.length === 0 ? (
                                         <div style={{textAlign: 'center', padding: 20, opacity: 0.5}}>Нет логов</div>
                                     ) : (
-                                        botLogs.map((line, i) => <div key={i} style={{padding: '2px 0', borderBottom: '1px solid rgba(119,200,148,0.05)'}}>{line}</div>)
+                                        botLogs.map((line, i) => <div key={i} style={{padding: '2px 0', borderBottom: '1px solid rgba(100,180,120,0.08)'}}>{line}</div>)
                                     )}
                                 </div>
                             </div>
@@ -440,16 +440,16 @@ const { useState, useEffect, useCallback } = React;
                                     <div className="empty"><i className="fa-solid fa-user-slash" style={{fontSize: 32, marginBottom: 12, display: 'block'}}></i>Нет сотрудников. Добавьте кухню и курьера по VK ID.</div>
                                 ) : (
                                     staff.map(s => (
-                                        <div key={s.id} style={{padding: '16px 24px', borderBottom: '1px solid rgba(119,200,148,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                        <div key={s.id} style={{padding: '16px 24px', borderBottom: '1px solid rgba(100,180,120,0.08)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
                                             <div>
                                                 <div style={{fontWeight: 600, fontSize: 15}}>
                                                     {s.name || 'Без имени'}
-                                                    <span style={{marginLeft: 8, fontSize: 12, color: '#95D5B2', fontWeight: 400}}>VK ID: {s.vk_id}</span>
+                                                    <span style={{marginLeft: 8, fontSize: 12, color: '#8cc8a0', fontWeight: 400}}>VK ID: {s.vk_id}</span>
                                                 </div>
                                                 <div style={{marginTop: 4}}>
                                                     <span style={{padding: '3px 10px', borderRadius: 6, fontSize: 12, fontWeight: 600,
                                                         background: s.role === 'admin' ? 'rgba(64,192,87,0.2)' : s.role === 'kitchen' ? 'rgba(255,193,7,0.2)' : 'rgba(82,183,136,0.2)',
-                                                        color: s.role === 'admin' ? '#40C057' : s.role === 'kitchen' ? '#FFC107' : '#52B788'
+                                                        color: s.role === 'admin' ? '#5cdb7e' : s.role === 'kitchen' ? '#FFD060' : '#60c0e8'
                                                     }}>
                                                         {s.role === 'admin' ? '👑 Админ' : s.role === 'kitchen' ? '👨‍🍳 Кухня' : '🚗 Курьер'}
                                                     </span>
@@ -462,9 +462,9 @@ const { useState, useEffect, useCallback } = React;
                                     ))
                                 )}
                             </div>
-                            <div style={{marginTop: 16, padding: 16, background: 'rgba(119,200,148,0.06)', borderRadius: 12, fontSize: 13, color: '#95D5B2', lineHeight: 1.6}}>
+                            <div style={{marginTop: 16, padding: 16, background: 'rgba(30,60,42,0.5)', borderRadius: 12, fontSize: 13, color: '#8cc8a0', lineHeight: 1.6}}>
                                 <i className="fa-solid fa-info-circle" style={{marginRight: 6}}></i>
-                                Сотрудники получают уведомления в личные сообщения VK. Чтобы узнать VK ID — попросите сотрудника написать боту <code style={{background:'rgba(64,192,87,0.15)', padding:'2px 6px', borderRadius: 4}}>/start</code>, затем посмотрите логи бота.
+                                Сотрудники получают уведомления в личные сообщения VK. Чтобы узнать VK ID — попросите сотрудника написать боту <code style={{background:'rgba(64,192,87,0.2)', padding:'2px 6px', borderRadius: 4}}>/start</code>, затем посмотрите логи бота.
                             </div>
                         </div>
                     )}
@@ -482,37 +482,34 @@ const { useState, useEffect, useCallback } = React;
                                     <div className="empty"><i className="fa-solid fa-map" style={{fontSize: 32, marginBottom: 12, display: 'block'}}></i>Нет зон доставки</div>
                                 ) : (
                                     zones.map(zone => (
-                                        <div key={zone.id} style={{padding: '16px 24px', borderBottom: '1px solid rgba(119,200,148,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
-                                            <div style={{flex: 1}}>
-                                                <div style={{fontWeight: 600, fontSize: 15}}>
-                                                    {zone.name}
-                                                    <span style={{marginLeft: 8, fontSize: 12, padding: '2px 8px', borderRadius: 6,
-                                                        background: zone.enabled ? 'rgba(64,192,87,0.2)' : 'rgba(180,60,60,0.2)',
-                                                        color: zone.enabled ? '#40C057' : '#e88'
-                                                    }}>
-                                                        {zone.enabled ? 'Вкл' : 'Выкл'}
-                                                    </span>
-                                                </div>
-                                                <div style={{marginTop: 4, fontSize: 13, color: '#95D5B2'}}>
-                                                    <span><i className="fa-solid fa-ruble-sign" style={{marginRight: 4}}></i>{zone.cost}₽</span>
-                                                    {zone.free_from && <span style={{marginLeft: 12}}><i className="fa-solid fa-gift" style={{marginRight: 4}}></i>Бесплатно от {zone.free_from}₽</span>}
-                                                    <span style={{marginLeft: 12}}><i className="fa-solid fa-arrow-down-short-wide" style={{marginRight: 4}}></i>Порядок: {zone.sort_order}</span>
-                                                </div>
-                                                {zone.keywords && (
-                                                    <div style={{marginTop: 4, fontSize: 12, color: '#77C894'}}>
-                                                        <i className="fa-solid fa-key" style={{marginRight: 4}}></i>{zone.keywords}
+                                        <div key={zone.id} className="zone-item">
+                                            <div className="zone-top">
+                                                <div className="zone-info">
+                                                    <div className="zone-name">
+                                                        {zone.name}
+                                                        <span className={`zone-tag ${zone.enabled ? 'on' : 'off'}`}>{zone.enabled ? 'Вкл' : 'Выкл'}</span>
                                                     </div>
-                                                )}
-                                            </div>
-                                            <div style={{display: 'flex', gap: 8, flexShrink: 0}}>
-                                                <button className="btn btn-primary" onClick={() => openEditZone(zone)}><i className="fa-solid fa-pen"></i></button>
-                                                <button className="btn btn-danger" onClick={() => deleteZone(zone.id)}><i className="fa-solid fa-trash"></i></button>
+                                                    <div className="zone-meta">
+                                                        <span><i className="fa-solid fa-ruble-sign" style={{marginRight: 4}}></i>{zone.cost}₽</span>
+                                                        {zone.free_from && <span><i className="fa-solid fa-gift" style={{marginRight: 4}}></i>Бесплатно от {zone.free_from}₽</span>}
+                                                        <span><i className="fa-solid fa-arrow-down-short-wide" style={{marginRight: 4}}></i>Порядок: {zone.sort_order}</span>
+                                                    </div>
+                                                    {zone.keywords && (
+                                                        <div className="zone-keywords">
+                                                            <i className="fa-solid fa-key" style={{marginRight: 4}}></i>{zone.keywords}
+                                                        </div>
+                                                    )}
+                                                </div>
+                                                <div className="zone-actions">
+                                                    <button className="btn btn-primary" onClick={() => openEditZone(zone)}><i className="fa-solid fa-pen"></i></button>
+                                                    <button className="btn btn-danger" onClick={() => deleteZone(zone.id)}><i className="fa-solid fa-trash"></i></button>
+                                                </div>
                                             </div>
                                         </div>
                                     ))
                                 )}
                             </div>
-                            <div style={{marginTop: 16, padding: 16, background: 'rgba(119,200,148,0.06)', borderRadius: 12, fontSize: 13, color: '#95D5B2', lineHeight: 1.6}}>
+                            <div style={{marginTop: 16, padding: 16, background: 'rgba(30,60,42,0.5)', borderRadius: 12, fontSize: 13, color: '#8cc8a0', lineHeight: 1.6}}>
                                 <i className="fa-solid fa-info-circle" style={{marginRight: 6}}></i>
                                 Ключевые слова через запятую — бот определяет зону по адресу заказа. Бот читает зоны из базы данных при каждом заказе.
                             </div>
@@ -557,7 +554,7 @@ const { useState, useEffect, useCallback } = React;
                                 </div>
                                 <div className="order-detail-total">
                                     <span>Итого</span>
-                                    <span style={{color: '#40C057'}}>{orderDetail.total_price}₽</span>
+                                    <span style={{color: '#5cdb7e'}}>{orderDetail.total_price}₽</span>
                                 </div>
                                 <div className="btn-row">
                                     <button className="btn btn-ghost" onClick={() => setOrderDetail(null)}><i className="fa-solid fa-xmark"></i> Закрыть</button>
