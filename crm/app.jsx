@@ -504,7 +504,7 @@ const { useState, useEffect, useCallback } = React;
                                                     </div>
                                                 )}
                                             </div>
-                                            <div style={{display: 'flex', gap: 8}}>
+                                            <div style={{display: 'flex', gap: 8, flexShrink: 0}}>
                                                 <button className="btn btn-primary" onClick={() => openEditZone(zone)}><i className="fa-solid fa-pen"></i></button>
                                                 <button className="btn btn-danger" onClick={() => deleteZone(zone.id)}><i className="fa-solid fa-trash"></i></button>
                                             </div>

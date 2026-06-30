@@ -1020,7 +1020,8 @@ const App = () => {
   }), zone.keywords)), /*#__PURE__*/React.createElement("div", {
     style: {
       display: 'flex',
-      gap: 8
+      gap: 8,
+      flexShrink: 0
     }
   }, /*#__PURE__*/React.createElement("button", {
     className: "btn btn-primary",
