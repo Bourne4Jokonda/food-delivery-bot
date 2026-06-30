@@ -9,18 +9,6 @@ if (isInVK) {
   window.VKBridge.send('VKWebAppInit');
 }
 const API = API_BASE;
-let _authCallback = null;
-const apiFetch = (url, opts = {}) => {
-  const key = localStorage.getItem('crm_api_key') || '';
-  const h = { 'X-API-Key': key, ...(opts.headers || {}) };
-  return fetch(url, { ...opts, headers: h }).then(r => {
-    if (r.status === 401 && _authCallback) {
-      localStorage.removeItem('crm_api_key');
-      _authCallback(false);
-    }
-    return r;
-  });
-};
 const STATUS_MAP = {
   new: 'Новый',
   confirmed: 'Подтвержден',
@@ -64,10 +52,6 @@ const STATUS_LABEL_PICKUP = {
   delivered: 'Выдать'
 };
 const App = () => {
-  const [authed, setAuthed] = useState(!!localStorage.getItem('crm_api_key'));
-  _authCallback = setAuthed;
-  const [loginKey, setLoginKey] = useState('');
-  const [loginError, setLoginError] = useState('');
   const [tab, setTab] = useState('orders');
   const [orders, setOrders] = useState([]);
   const [menu, setMenu] = useState([]);
@@ -100,34 +84,21 @@ const App = () => {
     role: 'kitchen',
     name: ''
   });
-  const doLogin = async () => {
-    setLoginError('');
-    try {
-      const r = await fetch(`${API}/auth/verify`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ key: loginKey })
-      });
-      if (r.ok) {
-        localStorage.setItem('crm_api_key', loginKey);
-        setAuthed(true);
-      } else {
-        setLoginError('Неверный ключ');
-      }
-    } catch (e) {
-      setLoginError('Ошибка соединения');
-    }
-  };
-  const doLogout = () => {
-    localStorage.removeItem('crm_api_key');
-    setAuthed(false);
-    setLoginKey('');
-  };
+  const [zones, setZones] = useState([]);
+  const [zoneModal, setZoneModal] = useState(null);
+  const [newZone, setNewZone] = useState({
+    name: '',
+    cost: '',
+    free_from: '',
+    enabled: true,
+    sort_order: 0,
+    keywords: ''
+  });
   const load = useCallback(async () => {
     try {
-      const [o, m, s, w] = await Promise.all([apiFetch(`${API}/orders`).then(r => r.ok ? r.json() : []), apiFetch(`${API}/menu`).then(r => r.ok ? r.json() : []), apiFetch(`${API}/stats`).then(r => r.ok ? r.json() : {orders:0,revenue:0}), apiFetch(`${API}/stats/week`).then(r => r.ok ? r.json() : {orders:0,revenue:0})]);
-      setOrders(Array.isArray(o) ? o : []);
-      setMenu(Array.isArray(m) ? m : []);
+      const [o, m, s, w] = await Promise.all([fetch(`${API}/orders`).then(r => r.json()), fetch(`${API}/menu`).then(r => r.json()), fetch(`${API}/stats`).then(r => r.json()), fetch(`${API}/stats/week`).then(r => r.json())]);
+      setOrders(o);
+      setMenu(m);
       setStats(s);
       setWeekStats(w);
     } catch (e) {
@@ -136,8 +107,7 @@ const App = () => {
   }, []);
   const loadBotStatus = useCallback(async () => {
     try {
-      const r = await apiFetch(`${API}/bot/status`);
-      const s = r.ok ? await r.json() : {running:false,pid:null,uptime:null};
+      const s = await fetch(`${API}/bot/status`).then(r => r.json());
       setBotStatus(s);
     } catch (e) {
       console.error(e);
@@ -145,8 +115,7 @@ const App = () => {
   }, []);
   const loadBotLogs = useCallback(async () => {
     try {
-      const r = await apiFetch(`${API}/bot/logs?lines=30`);
-      const l = r.ok ? await r.json() : {lines:[]};
+      const l = await fetch(`${API}/bot/logs?lines=30`).then(r => r.json());
       setBotLogs(l.lines || []);
     } catch (e) {
       console.error(e);
@@ -154,9 +123,16 @@ const App = () => {
   }, []);
   const loadStaff = useCallback(async () => {
     try {
-      const r = await apiFetch(`${API}/staff`);
-      const s = r.ok ? await r.json() : [];
-      setStaff(Array.isArray(s) ? s : []);
+      const s = await fetch(`${API}/staff`).then(r => r.json());
+      setStaff(s);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
+  const loadZones = useCallback(async () => {
+    try {
+      const z = await fetch(`${API}/delivery-zones`).then(r => r.json());
+      setZones(Array.isArray(z) ? z : []);
     } catch (e) {
       console.error(e);
     }
@@ -165,13 +141,15 @@ const App = () => {
     load();
     loadBotStatus();
     loadStaff();
+    loadZones();
     const t = setInterval(() => {
       load();
       loadBotStatus();
       loadStaff();
+      loadZones();
     }, 10000);
     return () => clearInterval(t);
-  }, [load, loadBotStatus, loadStaff]);
+  }, [load, loadBotStatus, loadStaff, loadZones]);
   useEffect(() => {
     if (tab === 'bot') {
       loadBotLogs();
@@ -180,7 +158,7 @@ const App = () => {
     }
   }, [tab, loadBotLogs]);
   const updateStatus = async (id, status) => {
-    await apiFetch(`${API}/orders/${id}/status`, {
+    await fetch(`${API}/orders/${id}/status`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json'
@@ -198,7 +176,7 @@ const App = () => {
   };
   const openOrderDetail = async orderId => {
     try {
-      const res = await apiFetch(`${API}/orders/${orderId}`);
+      const res = await fetch(`${API}/orders/${orderId}`);
       const data = await res.json();
       setOrderDetail(data);
     } catch (e) {
@@ -211,7 +189,7 @@ const App = () => {
       price: parseFloat(newItem.price)
     };
     if (menuModal === 'new') {
-      await apiFetch(`${API}/menu`, {
+      await fetch(`${API}/menu`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -219,7 +197,7 @@ const App = () => {
         body: JSON.stringify(body)
       });
     } else {
-      await apiFetch(`${API}/menu/${menuModal}`, {
+      await fetch(`${API}/menu/${menuModal}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
@@ -238,7 +216,7 @@ const App = () => {
   };
   const deleteMenuItem = async id => {
     if (!confirm('Удалить блюдо?')) return;
-    await apiFetch(`${API}/menu/${id}`, {
+    await fetch(`${API}/menu/${id}`, {
       method: 'DELETE'
     });
     load();
@@ -253,7 +231,7 @@ const App = () => {
     setMenuModal(item.id);
   };
   const botAction = async action => {
-    await apiFetch(`${API}/bot/${action}`, {
+    await fetch(`${API}/bot/${action}`, {
       method: 'POST'
     });
     setTimeout(loadBotStatus, 1000);
@@ -265,7 +243,7 @@ const App = () => {
       name: newStaff.name
     };
     if (isNaN(body.vk_id)) return alert('Введите числовой VK ID');
-    await apiFetch(`${API}/staff`, {
+    await fetch(`${API}/staff`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -282,44 +260,68 @@ const App = () => {
   };
   const removeStaffMember = async id => {
     if (!confirm('Убрать сотрудника? Он станет клиентом.')) return;
-    await apiFetch(`${API}/staff/${id}`, {
+    await fetch(`${API}/staff/${id}`, {
       method: 'DELETE'
     });
     loadStaff();
   };
+  const saveZone = async () => {
+    const body = {
+      name: newZone.name,
+      cost: parseFloat(newZone.cost) || 0,
+      free_from: newZone.free_from ? parseFloat(newZone.free_from) : null,
+      enabled: newZone.enabled,
+      sort_order: parseInt(newZone.sort_order) || 0,
+      keywords: newZone.keywords
+    };
+    if (!body.name) return alert('Введите название зоны');
+    if (zoneModal === 'new') {
+      await fetch(`${API}/delivery-zones`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+    } else {
+      await fetch(`${API}/delivery-zones/${zoneModal}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+    }
+    setZoneModal(null);
+    setNewZone({
+      name: '',
+      cost: '',
+      free_from: '',
+      enabled: true,
+      sort_order: 0,
+      keywords: ''
+    });
+    loadZones();
+  };
+  const deleteZone = async id => {
+    if (!confirm('Удалить зону доставки?')) return;
+    await fetch(`${API}/delivery-zones/${id}`, {
+      method: 'DELETE'
+    });
+    loadZones();
+  };
+  const openEditZone = zone => {
+    setNewZone({
+      name: zone.name,
+      cost: zone.cost,
+      free_from: zone.free_from || '',
+      enabled: zone.enabled,
+      sort_order: zone.sort_order,
+      keywords: zone.keywords || ''
+    });
+    setZoneModal(zone.id);
+  };
   const activeOrders = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled');
-  if (!authed) {
-    return /*#__PURE__*/React.createElement("div", {
-      className: "app",
-      style: { display: 'flex', alignItems: 'center', justifyContent: 'center', minHeight: '100vh' }
-    }, /*#__PURE__*/React.createElement("div", {
-      className: "glass neo",
-      style: { padding: 40, width: 380, textAlign: 'center' }
-    }, /*#__PURE__*/React.createElement("div", {
-      style: { fontSize: 48, marginBottom: 16 }
-    }, "\uD83C\uDF55"), /*#__PURE__*/React.createElement("h2", {
-      style: { marginBottom: 8, color: '#D8F3DC' }
-    }, "\u0412\u043A\u0443\u0441\u043D\u0430\u044F \u0414\u043E\u0441\u0442\u0430\u0432\u043A\u0430 \u2014 CRM"), /*#__PURE__*/React.createElement("p", {
-      style: { color: '#95D5B2', marginBottom: 24, fontSize: 14 }
-    }, "\u0412\u0432\u0435\u0434\u0438\u0442\u0435 API-\u043A\u043B\u044E\u0447 \u0434\u043B\u044F \u0434\u043E\u0441\u0442\u0443\u043F\u0430"), /*#__PURE__*/React.createElement("input", {
-      type: "password",
-      placeholder: "API \u043A\u043B\u044E\u0447",
-      value: loginKey,
-      onChange: e => setLoginKey(e.target.value),
-      onKeyDown: e => { if (e.key === 'Enter') doLogin(); },
-      style: {
-        width: '100%', padding: '12px 14px', background: 'rgba(119,200,148,0.08)',
-        border: '1px solid rgba(119,200,148,0.12)', borderRadius: 10, color: '#D8F3DC',
-        fontSize: 14, marginBottom: 12, outline: 'none', textAlign: 'center'
-      }
-    }), loginError && /*#__PURE__*/React.createElement("div", {
-      style: { color: '#e88', fontSize: 13, marginBottom: 12 }
-    }, loginError), /*#__PURE__*/React.createElement("button", {
-      className: "btn btn-success",
-      onClick: doLogin,
-      style: { width: '100%', padding: '12px 0', fontSize: 14 }
-    }, "\u0412\u043E\u0439\u0442\u0438")));
-  }
   return /*#__PURE__*/React.createElement("div", {
     className: "app"
   }, /*#__PURE__*/React.createElement("div", {
@@ -334,11 +336,7 @@ const App = () => {
     onClick: load
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-rotate"
-  }), " Обновить"), /*#__PURE__*/React.createElement("button", {
-    className: "btn btn-ghost",
-    onClick: doLogout,
-    style: { marginLeft: 8 }
-  }, "\uD83D\uDEAA Выйти")), /*#__PURE__*/React.createElement("div", {
+  }), " Обновить")), /*#__PURE__*/React.createElement("div", {
     className: "stats"
   }, /*#__PURE__*/React.createElement("div", {
     className: "stat-card glass neo"
@@ -404,7 +402,12 @@ const App = () => {
     onClick: () => setTab('staff')
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-users"
-  }), " Сотрудники")), tab === 'orders' && /*#__PURE__*/React.createElement("div", {
+  }), " Сотрудники"), /*#__PURE__*/React.createElement("button", {
+    className: `tab ${tab === 'zones' ? 'active' : ''}`,
+    onClick: () => setTab('zones')
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-map-location-dot"
+  }), " Зоны")), tab === 'orders' && /*#__PURE__*/React.createElement("div", {
     className: "panel glass"
   }, /*#__PURE__*/React.createElement("div", {
     className: "panel-header"
@@ -775,7 +778,137 @@ const App = () => {
       padding: '2px 6px',
       borderRadius: 4
     }
-  }, "/start"), ", затем посмотрите логи бота.")), orderDetail && /*#__PURE__*/React.createElement("div", {
+  }, "/start"), ", затем посмотрите логи бота.")), tab === 'zones' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "panel glass"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "panel-header"
+  }, /*#__PURE__*/React.createElement("h2", null, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-map-location-dot",
+    style: {
+      marginRight: 8
+    }
+  }), "Зоны доставки"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-success",
+    onClick: () => {
+      setNewZone({
+        name: '',
+        cost: '',
+        free_from: '',
+        enabled: true,
+        sort_order: 0,
+        keywords: ''
+      });
+      setZoneModal('new');
+    }
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-plus"
+  }), " Добавить")), zones.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "empty"
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-map",
+    style: {
+      fontSize: 32,
+      marginBottom: 12,
+      display: 'block'
+    }
+  }), "Нет зон доставки") : zones.map(zone => /*#__PURE__*/React.createElement("div", {
+    key: zone.id,
+    style: {
+      padding: '16px 24px',
+      borderBottom: '1px solid rgba(119,200,148,0.05)',
+      display: 'flex',
+      justifyContent: 'space-between',
+      alignItems: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      flex: 1
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      fontWeight: 600,
+      fontSize: 15
+    }
+  }, zone.name, /*#__PURE__*/React.createElement("span", {
+    style: {
+      marginLeft: 8,
+      fontSize: 12,
+      padding: '2px 8px',
+      borderRadius: 6,
+      background: zone.enabled ? 'rgba(64,192,87,0.2)' : 'rgba(180,60,60,0.2)',
+      color: zone.enabled ? '#40C057' : '#e88'
+    }
+  }, zone.enabled ? 'Вкл' : 'Выкл')), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 4,
+      fontSize: 13,
+      color: '#95D5B2'
+    }
+  }, /*#__PURE__*/React.createElement("span", null, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-ruble-sign",
+    style: {
+      marginRight: 4
+    }
+  }), zone.cost, "₽"), zone.free_from && /*#__PURE__*/React.createElement("span", {
+    style: {
+      marginLeft: 12
+    }
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-gift",
+    style: {
+      marginRight: 4
+    }
+  }), "Бесплатно от ", zone.free_from, "₽"), /*#__PURE__*/React.createElement("span", {
+    style: {
+      marginLeft: 12
+    }
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-arrow-down-short-wide",
+    style: {
+      marginRight: 4
+    }
+  }), "Порядок: ", zone.sort_order)), zone.keywords && /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 4,
+      fontSize: 12,
+      color: '#77C894'
+    }
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-key",
+    style: {
+      marginRight: 4
+    }
+  }), zone.keywords)), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 8
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary",
+    onClick: () => openEditZone(zone)
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-pen"
+  })), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-danger",
+    onClick: () => deleteZone(zone.id)
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-trash"
+  })))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 16,
+      padding: 16,
+      background: 'rgba(119,200,148,0.06)',
+      borderRadius: 12,
+      fontSize: 13,
+      color: '#95D5B2',
+      lineHeight: 1.6
+    }
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-info-circle",
+    style: {
+      marginRight: 6
+    }
+  }), "Ключевые слова через запятую — бот определяет зону по адресу заказа. Бот читает зоны из базы данных при каждом заказе.")), orderDetail && /*#__PURE__*/React.createElement("div", {
     className: "modal-overlay",
     onClick: () => setOrderDetail(null)
   }, /*#__PURE__*/React.createElement("div", {
@@ -838,23 +971,7 @@ const App = () => {
     style: {
       fontWeight: 600
     }
-  }, item.price * item.quantity, "₽")))), orderDetail.delivery_cost > 0 && /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      padding: '8px 0',
-      fontSize: 14,
-      color: '#95D5B2'
-    }
-  }, /*#__PURE__*/React.createElement("span", null, "Доставка"), /*#__PURE__*/React.createElement("span", null, orderDetail.delivery_cost, "₽")), orderDetail.delivery_estimated_minutes && /*#__PURE__*/React.createElement("div", {
-    style: {
-      display: 'flex',
-      justifyContent: 'space-between',
-      padding: '8px 0',
-      fontSize: 14,
-      color: '#95D5B2'
-    }
-  }, /*#__PURE__*/React.createElement("span", null, "Ожидаемое время"), /*#__PURE__*/React.createElement("span", null, orderDetail.delivery_estimated_minutes, " мин")), /*#__PURE__*/React.createElement("div", {
+  }, item.price * item.quantity, "₽")))), /*#__PURE__*/React.createElement("div", {
     className: "order-detail-total"
   }, /*#__PURE__*/React.createElement("span", null, "Итого"), /*#__PURE__*/React.createElement("span", {
     style: {
@@ -979,6 +1096,87 @@ const App = () => {
     onClick: addStaffMember
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-check"
-  }), " Добавить")))));
+  }), " Добавить")))), zoneModal !== null && /*#__PURE__*/React.createElement("div", {
+    className: "modal-overlay",
+    onClick: () => setZoneModal(null)
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "modal glass neo",
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("h2", null, /*#__PURE__*/React.createElement("i", {
+    className: `fa-solid ${zoneModal === 'new' ? 'fa-plus' : 'fa-pen'}`,
+    style: {
+      marginRight: 8
+    }
+  }), zoneModal === 'new' ? 'Новая зона' : 'Редактировать зону'), /*#__PURE__*/React.createElement("input", {
+    placeholder: "Название зоны",
+    value: newZone.name,
+    onChange: e => setNewZone({
+      ...newZone,
+      name: e.target.value
+    })
+  }), /*#__PURE__*/React.createElement("input", {
+    placeholder: "Стоимость доставки (₽)",
+    type: "number",
+    value: newZone.cost,
+    onChange: e => setNewZone({
+      ...newZone,
+      cost: e.target.value
+    })
+  }), /*#__PURE__*/React.createElement("input", {
+    placeholder: "Бесплатно от (₽, необязательно)",
+    type: "number",
+    value: newZone.free_from,
+    onChange: e => setNewZone({
+      ...newZone,
+      free_from: e.target.value
+    })
+  }), /*#__PURE__*/React.createElement("input", {
+    placeholder: "Порядок сортировки",
+    type: "number",
+    value: newZone.sort_order,
+    onChange: e => setNewZone({
+      ...newZone,
+      sort_order: e.target.value
+    })
+  }), /*#__PURE__*/React.createElement("input", {
+    placeholder: "Ключевые слова через запятую",
+    value: newZone.keywords,
+    onChange: e => setNewZone({
+      ...newZone,
+      keywords: e.target.value
+    })
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      display: 'flex',
+      alignItems: 'center',
+      gap: 8,
+      padding: '8px 0',
+      fontSize: 14,
+      cursor: 'pointer'
+    }
+  }, /*#__PURE__*/React.createElement("input", {
+    type: "checkbox",
+    checked: newZone.enabled,
+    onChange: e => setNewZone({
+      ...newZone,
+      enabled: e.target.checked
+    }),
+    style: {
+      width: 18,
+      height: 18
+    }
+  }), "Зона активна"), /*#__PURE__*/React.createElement("div", {
+    className: "btn-row"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ghost",
+    onClick: () => setZoneModal(null)
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-xmark"
+  }), " Отмена"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-success",
+    onClick: saveZone
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-check"
+  }), " Сохранить")))));
 };
 ReactDOM.render(/*#__PURE__*/React.createElement(App, null), document.getElementById('root'));

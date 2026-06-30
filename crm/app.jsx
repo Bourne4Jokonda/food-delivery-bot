@@ -36,6 +36,9 @@ const { useState, useEffect, useCallback } = React;
             const [staff, setStaff] = useState([]);
             const [staffModal, setStaffModal] = useState(false);
             const [newStaff, setNewStaff] = useState({ vk_id: '', role: 'kitchen', name: '' });
+            const [zones, setZones] = useState([]);
+            const [zoneModal, setZoneModal] = useState(null);
+            const [newZone, setNewZone] = useState({ name: '', cost: '', free_from: '', enabled: true, sort_order: 0, keywords: '' });
 
             const load = useCallback(async () => {
                 try {
@@ -70,7 +73,14 @@ const { useState, useEffect, useCallback } = React;
                 } catch (e) { console.error(e); }
             }, []);
 
-            useEffect(() => { load(); loadBotStatus(); loadStaff(); const t = setInterval(() => { load(); loadBotStatus(); loadStaff(); }, 10000); return () => clearInterval(t); }, [load, loadBotStatus, loadStaff]);
+            const loadZones = useCallback(async () => {
+                try {
+                    const z = await fetch(`${API}/delivery-zones`).then(r => r.json());
+                    setZones(Array.isArray(z) ? z : []);
+                } catch (e) { console.error(e); }
+            }, []);
+
+            useEffect(() => { load(); loadBotStatus(); loadStaff(); loadZones(); const t = setInterval(() => { load(); loadBotStatus(); loadStaff(); loadZones(); }, 10000); return () => clearInterval(t); }, [load, loadBotStatus, loadStaff, loadZones]);
             useEffect(() => { if (tab === 'bot') { loadBotLogs(); const t = setInterval(loadBotLogs, 5000); return () => clearInterval(t); } }, [tab, loadBotLogs]);
 
             const updateStatus = async (id, status) => {
@@ -137,6 +147,37 @@ const { useState, useEffect, useCallback } = React;
                 loadStaff();
             };
 
+            const saveZone = async () => {
+                const body = {
+                    name: newZone.name,
+                    cost: parseFloat(newZone.cost) || 0,
+                    free_from: newZone.free_from ? parseFloat(newZone.free_from) : null,
+                    enabled: newZone.enabled,
+                    sort_order: parseInt(newZone.sort_order) || 0,
+                    keywords: newZone.keywords,
+                };
+                if (!body.name) return alert('Введите название зоны');
+                if (zoneModal === 'new') {
+                    await fetch(`${API}/delivery-zones`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                } else {
+                    await fetch(`${API}/delivery-zones/${zoneModal}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                }
+                setZoneModal(null);
+                setNewZone({ name: '', cost: '', free_from: '', enabled: true, sort_order: 0, keywords: '' });
+                loadZones();
+            };
+
+            const deleteZone = async (id) => {
+                if (!confirm('Удалить зону доставки?')) return;
+                await fetch(`${API}/delivery-zones/${id}`, { method: 'DELETE' });
+                loadZones();
+            };
+
+            const openEditZone = (zone) => {
+                setNewZone({ name: zone.name, cost: zone.cost, free_from: zone.free_from || '', enabled: zone.enabled, sort_order: zone.sort_order, keywords: zone.keywords || '' });
+                setZoneModal(zone.id);
+            };
+
             const activeOrders = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled');
 
             return (
@@ -181,6 +222,9 @@ const { useState, useEffect, useCallback } = React;
                         </button>
                         <button className={`tab ${tab === 'staff' ? 'active' : ''}`} onClick={() => setTab('staff')}>
                             <i className="fa-solid fa-users"></i> Сотрудники
+                        </button>
+                        <button className={`tab ${tab === 'zones' ? 'active' : ''}`} onClick={() => setTab('zones')}>
+                            <i className="fa-solid fa-map-location-dot"></i> Зоны
                         </button>
                     </div>
 
@@ -361,6 +405,56 @@ const { useState, useEffect, useCallback } = React;
                         </div>
                     )}
 
+                    {tab === 'zones' && (
+                        <div>
+                            <div className="panel glass">
+                                <div className="panel-header">
+                                    <h2><i className="fa-solid fa-map-location-dot" style={{marginRight: 8}}></i>Зоны доставки</h2>
+                                    <button className="btn btn-success" onClick={() => { setNewZone({name:'',cost:'',free_from:'',enabled:true,sort_order:0,keywords:''}); setZoneModal('new'); }}>
+                                        <i className="fa-solid fa-plus"></i> Добавить
+                                    </button>
+                                </div>
+                                {zones.length === 0 ? (
+                                    <div className="empty"><i className="fa-solid fa-map" style={{fontSize: 32, marginBottom: 12, display: 'block'}}></i>Нет зон доставки</div>
+                                ) : (
+                                    zones.map(zone => (
+                                        <div key={zone.id} style={{padding: '16px 24px', borderBottom: '1px solid rgba(119,200,148,0.05)', display: 'flex', justifyContent: 'space-between', alignItems: 'center'}}>
+                                            <div style={{flex: 1}}>
+                                                <div style={{fontWeight: 600, fontSize: 15}}>
+                                                    {zone.name}
+                                                    <span style={{marginLeft: 8, fontSize: 12, padding: '2px 8px', borderRadius: 6,
+                                                        background: zone.enabled ? 'rgba(64,192,87,0.2)' : 'rgba(180,60,60,0.2)',
+                                                        color: zone.enabled ? '#40C057' : '#e88'
+                                                    }}>
+                                                        {zone.enabled ? 'Вкл' : 'Выкл'}
+                                                    </span>
+                                                </div>
+                                                <div style={{marginTop: 4, fontSize: 13, color: '#95D5B2'}}>
+                                                    <span><i className="fa-solid fa-ruble-sign" style={{marginRight: 4}}></i>{zone.cost}₽</span>
+                                                    {zone.free_from && <span style={{marginLeft: 12}}><i className="fa-solid fa-gift" style={{marginRight: 4}}></i>Бесплатно от {zone.free_from}₽</span>}
+                                                    <span style={{marginLeft: 12}}><i className="fa-solid fa-arrow-down-short-wide" style={{marginRight: 4}}></i>Порядок: {zone.sort_order}</span>
+                                                </div>
+                                                {zone.keywords && (
+                                                    <div style={{marginTop: 4, fontSize: 12, color: '#77C894'}}>
+                                                        <i className="fa-solid fa-key" style={{marginRight: 4}}></i>{zone.keywords}
+                                                    </div>
+                                                )}
+                                            </div>
+                                            <div style={{display: 'flex', gap: 8}}>
+                                                <button className="btn btn-primary" onClick={() => openEditZone(zone)}><i className="fa-solid fa-pen"></i></button>
+                                                <button className="btn btn-danger" onClick={() => deleteZone(zone.id)}><i className="fa-solid fa-trash"></i></button>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                            <div style={{marginTop: 16, padding: 16, background: 'rgba(119,200,148,0.06)', borderRadius: 12, fontSize: 13, color: '#95D5B2', lineHeight: 1.6}}>
+                                <i className="fa-solid fa-info-circle" style={{marginRight: 6}}></i>
+                                Ключевые слова через запятую — бот определяет зону по адресу заказа. Бот читает зоны из базы данных при каждом заказе.
+                            </div>
+                        </div>
+                    )}
+
                     {orderDetail && (
                         <div className="modal-overlay" onClick={() => setOrderDetail(null)}>
                             <div className="modal glass neo" onClick={(e) => e.stopPropagation()}>
@@ -446,6 +540,27 @@ const { useState, useEffect, useCallback } = React;
                                 <div className="btn-row">
                                     <button className="btn btn-ghost" onClick={() => setStaffModal(false)}><i className="fa-solid fa-xmark"></i> Отмена</button>
                                     <button className="btn btn-success" onClick={addStaffMember}><i className="fa-solid fa-check"></i> Добавить</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {zoneModal !== null && (
+                        <div className="modal-overlay" onClick={() => setZoneModal(null)}>
+                            <div className="modal glass neo" onClick={(e) => e.stopPropagation()}>
+                                <h2><i className={`fa-solid ${zoneModal === 'new' ? 'fa-plus' : 'fa-pen'}`} style={{marginRight: 8}}></i>{zoneModal === 'new' ? 'Новая зона' : 'Редактировать зону'}</h2>
+                                <input placeholder="Название зоны" value={newZone.name} onChange={e => setNewZone({...newZone, name: e.target.value})} />
+                                <input placeholder="Стоимость доставки (₽)" type="number" value={newZone.cost} onChange={e => setNewZone({...newZone, cost: e.target.value})} />
+                                <input placeholder="Бесплатно от (₽, необязательно)" type="number" value={newZone.free_from} onChange={e => setNewZone({...newZone, free_from: e.target.value})} />
+                                <input placeholder="Порядок сортировки" type="number" value={newZone.sort_order} onChange={e => setNewZone({...newZone, sort_order: e.target.value})} />
+                                <input placeholder="Ключевые слова через запятую" value={newZone.keywords} onChange={e => setNewZone({...newZone, keywords: e.target.value})} />
+                                <label style={{display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', fontSize: 14, cursor: 'pointer'}}>
+                                    <input type="checkbox" checked={newZone.enabled} onChange={e => setNewZone({...newZone, enabled: e.target.checked})} style={{width: 18, height: 18}} />
+                                    Зона активна
+                                </label>
+                                <div className="btn-row">
+                                    <button className="btn btn-ghost" onClick={() => setZoneModal(null)}><i className="fa-solid fa-xmark"></i> Отмена</button>
+                                    <button className="btn btn-success" onClick={saveZone}><i className="fa-solid fa-check"></i> Сохранить</button>
                                 </div>
                             </div>
                         </div>
