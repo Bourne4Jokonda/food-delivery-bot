@@ -619,7 +619,7 @@ const { useState, useEffect, useCallback } = React;
                                 <label style={{fontSize: 12, color: '#8cc8a0', marginBottom: 4, display: 'block'}}>Порядок сортировки</label>
                                 <input placeholder="0 — первая зона" type="number" value={newZone.sort_order} onChange={e => setNewZone({...newZone, sort_order: e.target.value})} />
                                 <label style={{fontSize: 12, color: '#8cc8a0', marginBottom: 4, display: 'block'}}>Ключевые слова (через запятую)</label>
-                                <input placeholder="родники,ул.,улица,пер." value={newZone.keywords} onChange={e => setNewZone({...newZone, keywords: e.target.value})} />
+                                <textarea placeholder="родники,ул.,улица,пер." value={newZone.keywords} onChange={e => setNewZone({...newZone, keywords: e.target.value})} rows={4} style={{width:'100%',padding:'12px 14px',background:'rgba(15,26,20,0.8)',border:'1px solid rgba(100,180,120,0.25)',borderRadius:10,color:'#e0f0e5',fontSize:14,marginBottom:12,fontFamily:'inherit',outline:'none',resize:'vertical'}} />
                                 <label style={{display: 'flex', alignItems: 'center', gap: 8, padding: '8px 0', fontSize: 14, cursor: 'pointer'}}>
                                     <input type="checkbox" checked={newZone.enabled} onChange={e => setNewZone({...newZone, enabled: e.target.checked})} style={{width: 18, height: 18}} />
                                     Зона активна

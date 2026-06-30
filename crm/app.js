@@ -1277,13 +1277,27 @@ const App = () => {
       marginBottom: 4,
       display: 'block'
     }
-  }, "Ключевые слова (через запятую)"), /*#__PURE__*/React.createElement("input", {
+  }, "Ключевые слова (через запятую)"), /*#__PURE__*/React.createElement("textarea", {
     placeholder: "родники,ул.,улица,пер.",
     value: newZone.keywords,
     onChange: e => setNewZone({
       ...newZone,
       keywords: e.target.value
-    })
+    }),
+    rows: 4,
+    style: {
+      width: '100%',
+      padding: '12px 14px',
+      background: 'rgba(15,26,20,0.8)',
+      border: '1px solid rgba(100,180,120,0.25)',
+      borderRadius: 10,
+      color: '#e0f0e5',
+      fontSize: 14,
+      marginBottom: 12,
+      fontFamily: 'inherit',
+      outline: 'none',
+      resize: 'vertical'
+    }
   }), /*#__PURE__*/React.createElement("label", {
     style: {
       display: 'flex',
