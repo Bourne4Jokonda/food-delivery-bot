@@ -9,6 +9,24 @@ if (isInVK) {
   window.VKBridge.send('VKWebAppInit');
 }
 const API = API_BASE;
+let _authCallback = null;
+const apiFetch = (url, opts = {}) => {
+  const key = localStorage.getItem('crm_api_key') || '';
+  const h = {
+    'X-API-Key': key,
+    ...(opts.headers || {})
+  };
+  return fetch(url, {
+    ...opts,
+    headers: h
+  }).then(r => {
+    if (r.status === 401 && _authCallback) {
+      localStorage.removeItem('crm_api_key');
+      _authCallback(false);
+    }
+    return r;
+  });
+};
 const STATUS_MAP = {
   new: 'Новый',
   confirmed: 'Подтвержден',
@@ -52,6 +70,10 @@ const STATUS_LABEL_PICKUP = {
   delivered: 'Выдать'
 };
 const App = () => {
+  const [authed, setAuthed] = useState(!!localStorage.getItem('crm_api_key'));
+  _authCallback = setAuthed;
+  const [loginKey, setLoginKey] = useState('');
+  const [loginError, setLoginError] = useState('');
   const [tab, setTab] = useState('orders');
   const [orders, setOrders] = useState([]);
   const [menu, setMenu] = useState([]);
@@ -94,11 +116,44 @@ const App = () => {
     sort_order: 0,
     keywords: ''
   });
+  const doLogin = async () => {
+    setLoginError('');
+    try {
+      const r = await fetch(`${API}/auth/verify`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          key: loginKey
+        })
+      });
+      if (r.ok) {
+        localStorage.setItem('crm_api_key', loginKey);
+        setAuthed(true);
+      } else {
+        setLoginError('Неверный ключ');
+      }
+    } catch (e) {
+      setLoginError('Ошибка соединения');
+    }
+  };
+  const doLogout = () => {
+    localStorage.removeItem('crm_api_key');
+    setAuthed(false);
+    setLoginKey('');
+  };
   const load = useCallback(async () => {
     try {
-      const [o, m, s, w] = await Promise.all([fetch(`${API}/orders`).then(r => r.json()), fetch(`${API}/menu`).then(r => r.json()), fetch(`${API}/stats`).then(r => r.json()), fetch(`${API}/stats/week`).then(r => r.json())]);
-      setOrders(o);
-      setMenu(m);
+      const [o, m, s, w] = await Promise.all([apiFetch(`${API}/orders`).then(r => r.ok ? r.json() : []), apiFetch(`${API}/menu`).then(r => r.ok ? r.json() : []), apiFetch(`${API}/stats`).then(r => r.ok ? r.json() : {
+        orders: 0,
+        revenue: 0
+      }), apiFetch(`${API}/stats/week`).then(r => r.ok ? r.json() : {
+        orders: 0,
+        revenue: 0
+      })]);
+      setOrders(Array.isArray(o) ? o : []);
+      setMenu(Array.isArray(m) ? m : []);
       setStats(s);
       setWeekStats(w);
     } catch (e) {
@@ -107,7 +162,12 @@ const App = () => {
   }, []);
   const loadBotStatus = useCallback(async () => {
     try {
-      const s = await fetch(`${API}/bot/status`).then(r => r.json());
+      const r = await apiFetch(`${API}/bot/status`);
+      const s = r.ok ? await r.json() : {
+        running: false,
+        pid: null,
+        uptime: null
+      };
       setBotStatus(s);
     } catch (e) {
       console.error(e);
@@ -115,7 +175,10 @@ const App = () => {
   }, []);
   const loadBotLogs = useCallback(async () => {
     try {
-      const l = await fetch(`${API}/bot/logs?lines=30`).then(r => r.json());
+      const r = await apiFetch(`${API}/bot/logs?lines=30`);
+      const l = r.ok ? await r.json() : {
+        lines: []
+      };
       setBotLogs(l.lines || []);
     } catch (e) {
       console.error(e);
@@ -123,15 +186,17 @@ const App = () => {
   }, []);
   const loadStaff = useCallback(async () => {
     try {
-      const s = await fetch(`${API}/staff`).then(r => r.json());
-      setStaff(s);
+      const r = await apiFetch(`${API}/staff`);
+      const s = r.ok ? await r.json() : [];
+      setStaff(Array.isArray(s) ? s : []);
     } catch (e) {
       console.error(e);
     }
   }, []);
   const loadZones = useCallback(async () => {
     try {
-      const z = await fetch(`${API}/delivery-zones`).then(r => r.json());
+      const r = await apiFetch(`${API}/delivery-zones`);
+      const z = r.ok ? await r.json() : [];
       setZones(Array.isArray(z) ? z : []);
     } catch (e) {
       console.error(e);
@@ -158,7 +223,7 @@ const App = () => {
     }
   }, [tab, loadBotLogs]);
   const updateStatus = async (id, status) => {
-    await fetch(`${API}/orders/${id}/status`, {
+    await apiFetch(`${API}/orders/${id}/status`, {
       method: 'PATCH',
       headers: {
         'Content-Type': 'application/json'
@@ -176,7 +241,7 @@ const App = () => {
   };
   const openOrderDetail = async orderId => {
     try {
-      const res = await fetch(`${API}/orders/${orderId}`);
+      const res = await apiFetch(`${API}/orders/${orderId}`);
       const data = await res.json();
       setOrderDetail(data);
     } catch (e) {
@@ -189,7 +254,7 @@ const App = () => {
       price: parseFloat(newItem.price)
     };
     if (menuModal === 'new') {
-      await fetch(`${API}/menu`, {
+      await apiFetch(`${API}/menu`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -197,7 +262,7 @@ const App = () => {
         body: JSON.stringify(body)
       });
     } else {
-      await fetch(`${API}/menu/${menuModal}`, {
+      await apiFetch(`${API}/menu/${menuModal}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
@@ -216,7 +281,7 @@ const App = () => {
   };
   const deleteMenuItem = async id => {
     if (!confirm('Удалить блюдо?')) return;
-    await fetch(`${API}/menu/${id}`, {
+    await apiFetch(`${API}/menu/${id}`, {
       method: 'DELETE'
     });
     load();
@@ -231,7 +296,7 @@ const App = () => {
     setMenuModal(item.id);
   };
   const botAction = async action => {
-    await fetch(`${API}/bot/${action}`, {
+    await apiFetch(`${API}/bot/${action}`, {
       method: 'POST'
     });
     setTimeout(loadBotStatus, 1000);
@@ -243,7 +308,7 @@ const App = () => {
       name: newStaff.name
     };
     if (isNaN(body.vk_id)) return alert('Введите числовой VK ID');
-    await fetch(`${API}/staff`, {
+    await apiFetch(`${API}/staff`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -260,7 +325,7 @@ const App = () => {
   };
   const removeStaffMember = async id => {
     if (!confirm('Убрать сотрудника? Он станет клиентом.')) return;
-    await fetch(`${API}/staff/${id}`, {
+    await apiFetch(`${API}/staff/${id}`, {
       method: 'DELETE'
     });
     loadStaff();
@@ -276,7 +341,7 @@ const App = () => {
     };
     if (!body.name) return alert('Введите название зоны');
     if (zoneModal === 'new') {
-      await fetch(`${API}/delivery-zones`, {
+      await apiFetch(`${API}/delivery-zones`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json'
@@ -284,7 +349,7 @@ const App = () => {
         body: JSON.stringify(body)
       });
     } else {
-      await fetch(`${API}/delivery-zones/${zoneModal}`, {
+      await apiFetch(`${API}/delivery-zones/${zoneModal}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json'
@@ -305,7 +370,7 @@ const App = () => {
   };
   const deleteZone = async id => {
     if (!confirm('Удалить зону доставки?')) return;
-    await fetch(`${API}/delivery-zones/${id}`, {
+    await apiFetch(`${API}/delivery-zones/${id}`, {
       method: 'DELETE'
     });
     loadZones();
@@ -322,6 +387,74 @@ const App = () => {
     setZoneModal(zone.id);
   };
   const activeOrders = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled');
+  if (!authed) {
+    return /*#__PURE__*/React.createElement("div", {
+      className: "app",
+      style: {
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        minHeight: '100vh'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "glass neo",
+      style: {
+        padding: 40,
+        width: 380,
+        textAlign: 'center'
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        fontSize: 48,
+        marginBottom: 16
+      }
+    }, "🍕"), /*#__PURE__*/React.createElement("h2", {
+      style: {
+        marginBottom: 8,
+        color: '#D8F3DC'
+      }
+    }, "Вкусная Доставка — CRM"), /*#__PURE__*/React.createElement("p", {
+      style: {
+        color: '#95D5B2',
+        marginBottom: 24,
+        fontSize: 14
+      }
+    }, "Введите API-ключ для доступа"), /*#__PURE__*/React.createElement("input", {
+      type: "password",
+      placeholder: "API ключ",
+      value: loginKey,
+      onChange: e => setLoginKey(e.target.value),
+      onKeyDown: e => {
+        if (e.key === 'Enter') doLogin();
+      },
+      style: {
+        width: '100%',
+        padding: '12px 14px',
+        background: 'rgba(119,200,148,0.08)',
+        border: '1px solid rgba(119,200,148,0.12)',
+        borderRadius: 10,
+        color: '#D8F3DC',
+        fontSize: 14,
+        marginBottom: 12,
+        outline: 'none',
+        textAlign: 'center'
+      }
+    }), loginError && /*#__PURE__*/React.createElement("div", {
+      style: {
+        color: '#e88',
+        fontSize: 13,
+        marginBottom: 12
+      }
+    }, loginError), /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-success",
+      onClick: doLogin,
+      style: {
+        width: '100%',
+        padding: '12px 0',
+        fontSize: 14
+      }
+    }, "Войти")));
+  }
   return /*#__PURE__*/React.createElement("div", {
     className: "app"
   }, /*#__PURE__*/React.createElement("div", {
@@ -331,12 +464,18 @@ const App = () => {
     style: {
       marginRight: 10
     }
-  }), "Вкусная Доставка — CRM"), /*#__PURE__*/React.createElement("button", {
+  }), "Вкусная Доставка — CRM"), /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("button", {
     className: "refresh",
     onClick: load
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-rotate"
-  }), " Обновить")), /*#__PURE__*/React.createElement("div", {
+  }), " Обновить"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ghost",
+    onClick: doLogout,
+    style: {
+      marginLeft: 8
+    }
+  }, "🚪 Выйти"))), /*#__PURE__*/React.createElement("div", {
     className: "stats"
   }, /*#__PURE__*/React.createElement("div", {
     className: "stat-card glass neo"

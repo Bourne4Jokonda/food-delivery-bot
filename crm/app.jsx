@@ -9,6 +9,19 @@ const { useState, useEffect, useCallback } = React;
 
         const API = API_BASE;
 
+        let _authCallback = null;
+        const apiFetch = (url, opts = {}) => {
+            const key = localStorage.getItem('crm_api_key') || '';
+            const h = { 'X-API-Key': key, ...(opts.headers || {}) };
+            return fetch(url, { ...opts, headers: h }).then(r => {
+                if (r.status === 401 && _authCallback) {
+                    localStorage.removeItem('crm_api_key');
+                    _authCallback(false);
+                }
+                return r;
+            });
+        };
+
         const STATUS_MAP = {
             new: 'Новый', confirmed: 'Подтвержден', preparing: 'Готовится',
             ready: 'Готов', delivering: 'В доставке', delivered: 'Доставлен', cancelled: 'Отменён'
@@ -23,6 +36,10 @@ const { useState, useEffect, useCallback } = React;
         const STATUS_LABEL_PICKUP = { delivered: 'Выдать' };
 
         const App = () => {
+            const [authed, setAuthed] = useState(!!localStorage.getItem('crm_api_key'));
+            _authCallback = setAuthed;
+            const [loginKey, setLoginKey] = useState('');
+            const [loginError, setLoginError] = useState('');
             const [tab, setTab] = useState('orders');
             const [orders, setOrders] = useState([]);
             const [menu, setMenu] = useState([]);
@@ -40,42 +57,68 @@ const { useState, useEffect, useCallback } = React;
             const [zoneModal, setZoneModal] = useState(null);
             const [newZone, setNewZone] = useState({ name: '', cost: '', free_from: '', enabled: true, sort_order: 0, keywords: '' });
 
+            const doLogin = async () => {
+                setLoginError('');
+                try {
+                    const r = await fetch(`${API}/auth/verify`, {
+                        method: 'POST', headers: {'Content-Type':'application/json'},
+                        body: JSON.stringify({ key: loginKey })
+                    });
+                    if (r.ok) {
+                        localStorage.setItem('crm_api_key', loginKey);
+                        setAuthed(true);
+                    } else {
+                        setLoginError('Неверный ключ');
+                    }
+                } catch (e) { setLoginError('Ошибка соединения'); }
+            };
+
+            const doLogout = () => {
+                localStorage.removeItem('crm_api_key');
+                setAuthed(false);
+                setLoginKey('');
+            };
+
             const load = useCallback(async () => {
                 try {
                     const [o, m, s, w] = await Promise.all([
-                        fetch(`${API}/orders`).then(r => r.json()),
-                        fetch(`${API}/menu`).then(r => r.json()),
-                        fetch(`${API}/stats`).then(r => r.json()),
-                        fetch(`${API}/stats/week`).then(r => r.json())
+                        apiFetch(`${API}/orders`).then(r => r.ok ? r.json() : []),
+                        apiFetch(`${API}/menu`).then(r => r.ok ? r.json() : []),
+                        apiFetch(`${API}/stats`).then(r => r.ok ? r.json() : {orders:0,revenue:0}),
+                        apiFetch(`${API}/stats/week`).then(r => r.ok ? r.json() : {orders:0,revenue:0})
                     ]);
-                    setOrders(o); setMenu(m); setStats(s); setWeekStats(w);
+                    setOrders(Array.isArray(o) ? o : []); setMenu(Array.isArray(m) ? m : []); setStats(s); setWeekStats(w);
                 } catch (e) { console.error(e); }
             }, []);
 
             const loadBotStatus = useCallback(async () => {
                 try {
-                    const s = await fetch(`${API}/bot/status`).then(r => r.json());
+                    const r = await apiFetch(`${API}/bot/status`);
+                    const s = r.ok ? await r.json() : {running:false,pid:null,uptime:null};
                     setBotStatus(s);
                 } catch (e) { console.error(e); }
             }, []);
 
             const loadBotLogs = useCallback(async () => {
                 try {
-                    const l = await fetch(`${API}/bot/logs?lines=30`).then(r => r.json());
+                    const r = await apiFetch(`${API}/bot/logs?lines=30`);
+                    const l = r.ok ? await r.json() : {lines:[]};
                     setBotLogs(l.lines || []);
                 } catch (e) { console.error(e); }
             }, []);
 
             const loadStaff = useCallback(async () => {
                 try {
-                    const s = await fetch(`${API}/staff`).then(r => r.json());
-                    setStaff(s);
+                    const r = await apiFetch(`${API}/staff`);
+                    const s = r.ok ? await r.json() : [];
+                    setStaff(Array.isArray(s) ? s : []);
                 } catch (e) { console.error(e); }
             }, []);
 
             const loadZones = useCallback(async () => {
                 try {
-                    const z = await fetch(`${API}/delivery-zones`).then(r => r.json());
+                    const r = await apiFetch(`${API}/delivery-zones`);
+                    const z = r.ok ? await r.json() : [];
                     setZones(Array.isArray(z) ? z : []);
                 } catch (e) { console.error(e); }
             }, []);
@@ -84,7 +127,7 @@ const { useState, useEffect, useCallback } = React;
             useEffect(() => { if (tab === 'bot') { loadBotLogs(); const t = setInterval(loadBotLogs, 5000); return () => clearInterval(t); } }, [tab, loadBotLogs]);
 
             const updateStatus = async (id, status) => {
-                await fetch(`${API}/orders/${id}/status`, {
+                await apiFetch(`${API}/orders/${id}/status`, {
                     method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify({status})
                 });
                 load();
@@ -98,7 +141,7 @@ const { useState, useEffect, useCallback } = React;
 
             const openOrderDetail = async (orderId) => {
                 try {
-                    const res = await fetch(`${API}/orders/${orderId}`);
+                    const res = await apiFetch(`${API}/orders/${orderId}`);
                     const data = await res.json();
                     setOrderDetail(data);
                 } catch (e) { console.error(e); }
@@ -107,9 +150,9 @@ const { useState, useEffect, useCallback } = React;
             const saveMenuItem = async () => {
                 const body = { ...newItem, price: parseFloat(newItem.price) };
                 if (menuModal === 'new') {
-                    await fetch(`${API}/menu`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                    await apiFetch(`${API}/menu`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
                 } else {
-                    await fetch(`${API}/menu/${menuModal}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                    await apiFetch(`${API}/menu/${menuModal}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
                 }
                 setMenuModal(null);
                 setNewItem({ name: '', description: '', price: '', category: 'Пицца' });
@@ -118,7 +161,7 @@ const { useState, useEffect, useCallback } = React;
 
             const deleteMenuItem = async (id) => {
                 if (!confirm('Удалить блюдо?')) return;
-                await fetch(`${API}/menu/${id}`, { method: 'DELETE' });
+                await apiFetch(`${API}/menu/${id}`, { method: 'DELETE' });
                 load();
             };
 
@@ -128,14 +171,14 @@ const { useState, useEffect, useCallback } = React;
             };
 
             const botAction = async (action) => {
-                await fetch(`${API}/bot/${action}`, { method: 'POST' });
+                await apiFetch(`${API}/bot/${action}`, { method: 'POST' });
                 setTimeout(loadBotStatus, 1000);
             };
 
             const addStaffMember = async () => {
                 const body = { vk_id: parseInt(newStaff.vk_id), role: newStaff.role, name: newStaff.name };
                 if (isNaN(body.vk_id)) return alert('Введите числовой VK ID');
-                await fetch(`${API}/staff`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                await apiFetch(`${API}/staff`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
                 setStaffModal(false);
                 setNewStaff({ vk_id: '', role: 'kitchen', name: '' });
                 loadStaff();
@@ -143,7 +186,7 @@ const { useState, useEffect, useCallback } = React;
 
             const removeStaffMember = async (id) => {
                 if (!confirm('Убрать сотрудника? Он станет клиентом.')) return;
-                await fetch(`${API}/staff/${id}`, { method: 'DELETE' });
+                await apiFetch(`${API}/staff/${id}`, { method: 'DELETE' });
                 loadStaff();
             };
 
@@ -158,9 +201,9 @@ const { useState, useEffect, useCallback } = React;
                 };
                 if (!body.name) return alert('Введите название зоны');
                 if (zoneModal === 'new') {
-                    await fetch(`${API}/delivery-zones`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                    await apiFetch(`${API}/delivery-zones`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
                 } else {
-                    await fetch(`${API}/delivery-zones/${zoneModal}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                    await apiFetch(`${API}/delivery-zones/${zoneModal}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
                 }
                 setZoneModal(null);
                 setNewZone({ name: '', cost: '', free_from: '', enabled: true, sort_order: 0, keywords: '' });
@@ -169,7 +212,7 @@ const { useState, useEffect, useCallback } = React;
 
             const deleteZone = async (id) => {
                 if (!confirm('Удалить зону доставки?')) return;
-                await fetch(`${API}/delivery-zones/${id}`, { method: 'DELETE' });
+                await apiFetch(`${API}/delivery-zones/${id}`, { method: 'DELETE' });
                 loadZones();
             };
 
@@ -180,11 +223,32 @@ const { useState, useEffect, useCallback } = React;
 
             const activeOrders = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled');
 
+            if (!authed) {
+                return (
+                    <div className="app" style={{display:'flex',alignItems:'center',justifyContent:'center',minHeight:'100vh'}}>
+                        <div className="glass neo" style={{padding:40,width:380,textAlign:'center'}}>
+                            <div style={{fontSize:48,marginBottom:16}}>🍕</div>
+                            <h2 style={{marginBottom:8,color:'#D8F3DC'}}>Вкусная Доставка — CRM</h2>
+                            <p style={{color:'#95D5B2',marginBottom:24,fontSize:14}}>Введите API-ключ для доступа</p>
+                            <input type="password" placeholder="API ключ" value={loginKey}
+                                onChange={e => setLoginKey(e.target.value)}
+                                onKeyDown={e => { if (e.key === 'Enter') doLogin(); }}
+                                style={{width:'100%',padding:'12px 14px',background:'rgba(119,200,148,0.08)',border:'1px solid rgba(119,200,148,0.12)',borderRadius:10,color:'#D8F3DC',fontSize:14,marginBottom:12,outline:'none',textAlign:'center'}} />
+                            {loginError && <div style={{color:'#e88',fontSize:13,marginBottom:12}}>{loginError}</div>}
+                            <button className="btn btn-success" onClick={doLogin} style={{width:'100%',padding:'12px 0',fontSize:14}}>Войти</button>
+                        </div>
+                    </div>
+                );
+            }
+
             return (
                 <div className="app">
                     <div className="header glass">
                         <h1><i className="fa-solid fa-burger" style={{marginRight: 10}}></i>Вкусная Доставка — CRM</h1>
-                        <button className="refresh" onClick={load}><i className="fa-solid fa-rotate"></i> Обновить</button>
+                        <div>
+                            <button className="refresh" onClick={load}><i className="fa-solid fa-rotate"></i> Обновить</button>
+                            <button className="btn btn-ghost" onClick={doLogout} style={{marginLeft: 8}}>🚪 Выйти</button>
+                        </div>
                     </div>
 
                     <div className="stats">
