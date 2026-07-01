@@ -59,6 +59,7 @@ const { useState, useEffect, useCallback } = React;
             const [categories, setCategories] = useState([]);
             const [catModal, setCatModal] = useState(null);
             const [newCat, setNewCat] = useState({ name: '', icon: 'fa-utensils', sort_order: 0 });
+            const [showCategories, setShowCategories] = useState(false);
 
             const doLogin = async () => {
                 setLoginError('');
@@ -325,9 +326,6 @@ const { useState, useEffect, useCallback } = React;
                         <button className={`tab ${tab === 'zones' ? 'active' : ''}`} onClick={() => setTab('zones')}>
                             <i className="fa-solid fa-map-location-dot"></i> Зоны
                         </button>
-                        <button className={`tab ${tab === 'categories' ? 'active' : ''}`} onClick={() => setTab('categories')}>
-                            <i className="fa-solid fa-tags"></i> Категории
-                        </button>
                     </div>
 
                     {tab === 'orders' && (
@@ -376,9 +374,42 @@ const { useState, useEffect, useCallback } = React;
 
                     {tab === 'menu' && (
                         <div>
+                            <div className="panel glass" style={{marginBottom: 16}}>
+                                <div className="panel-header" style={{cursor: 'pointer'}} onClick={() => setShowCategories(!showCategories)}>
+                                    <h2><i className="fa-solid fa-tags" style={{marginRight: 8}}></i>Категории <span style={{fontSize: 12, color: '#8cc8a0', fontWeight: 400}}>({categories.length})</span></h2>
+                                    <i className={`fa-solid fa-chevron-${showCategories ? 'up' : 'down'}`} style={{color: '#8cc8a0'}}></i>
+                                </div>
+                                {showCategories && (
+                                    <div>
+                                        <div style={{padding: '12px 24px', display: 'flex', justifyContent: 'flex-end'}}>
+                                            <button className="btn btn-success" onClick={() => { setNewCat({name:'',icon:'fa-utensils',sort_order:0}); setCatModal('new'); }}>
+                                                <i className="fa-solid fa-plus"></i> Добавить
+                                            </button>
+                                        </div>
+                                        {categories.map(cat => (
+                                            <div key={cat.id} className="zone-item">
+                                                <div className="zone-top">
+                                                    <div className="zone-info">
+                                                        <div className="zone-name">
+                                                            <i className={`fa-solid ${cat.icon}`} style={{marginRight: 8}}></i>{cat.name}
+                                                        </div>
+                                                        <div className="zone-meta">
+                                                            <span>Порядок: {cat.sort_order}</span>
+                                                        </div>
+                                                    </div>
+                                                    <div className="zone-actions">
+                                                        <button className="btn btn-primary" onClick={() => openEditCategory(cat)}><i className="fa-solid fa-pen"></i></button>
+                                                        <button className="btn btn-danger" onClick={() => deleteCategory(cat.id)}><i className="fa-solid fa-trash"></i></button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ))}
+                                    </div>
+                                )}
+                            </div>
                             <div className="panel-header glass" style={{marginBottom: 16, borderRadius: 16}}>
                                 <h2><i className="fa-solid fa-utensils" style={{marginRight: 8}}></i>Меню</h2>
-                                <button className="btn btn-success" onClick={() => { setNewItem({name:'',description:'',price:'',category:'Пицца'}); setMenuModal('new'); }}>
+                                <button className="btn btn-success" onClick={() => { setNewItem({name:'',description:'',price:'',category: categories[0]?.name || ''}); setMenuModal('new'); }}>
                                     <i className="fa-solid fa-plus"></i> Добавить
                                 </button>
                             </div>
@@ -550,45 +581,6 @@ const { useState, useEffect, useCallback } = React;
                             <div style={{marginTop: 16, padding: 16, background: 'rgba(30,60,42,0.5)', borderRadius: 12, fontSize: 13, color: '#8cc8a0', lineHeight: 1.6}}>
                                 <i className="fa-solid fa-info-circle" style={{marginRight: 6}}></i>
                                 Ключевые слова через запятую — бот определяет зону по адресу заказа. Бот читает зоны из базы данных при каждом заказе.
-                            </div>
-                        </div>
-                    )}
-
-                    {tab === 'categories' && (
-                        <div>
-                            <div className="panel glass">
-                                <div className="panel-header">
-                                    <h2><i className="fa-solid fa-tags" style={{marginRight: 8}}></i>Категории меню</h2>
-                                    <button className="btn btn-success" onClick={() => { setNewCat({name:'',icon:'fa-utensils',sort_order:0}); setCatModal('new'); }}>
-                                        <i className="fa-solid fa-plus"></i> Добавить
-                                    </button>
-                                </div>
-                                {categories.length === 0 ? (
-                                    <div className="empty"><i className="fa-solid fa-tag" style={{fontSize: 32, marginBottom: 12, display: 'block'}}></i>Нет категорий</div>
-                                ) : (
-                                    categories.map(cat => (
-                                        <div key={cat.id} className="zone-item">
-                                            <div className="zone-top">
-                                                <div className="zone-info">
-                                                    <div className="zone-name">
-                                                        <i className={`fa-solid ${cat.icon}`} style={{marginRight: 8}}></i>{cat.name}
-                                                    </div>
-                                                    <div className="zone-meta">
-                                                        <span>Порядок: {cat.sort_order}</span>
-                                                    </div>
-                                                </div>
-                                                <div className="zone-actions">
-                                                    <button className="btn btn-primary" onClick={() => openEditCategory(cat)}><i className="fa-solid fa-pen"></i></button>
-                                                    <button className="btn btn-danger" onClick={() => deleteCategory(cat.id)}><i className="fa-solid fa-trash"></i></button>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    ))
-                                )}
-                            </div>
-                            <div style={{marginTop: 16, padding: 16, background: 'rgba(30,60,42,0.5)', borderRadius: 12, fontSize: 13, color: '#8cc8a0', lineHeight: 1.6}}>
-                                <i className="fa-solid fa-info-circle" style={{marginRight: 6}}></i>
-                                Категории используются в меню и в боте. Иконки — классы FontAwesome (fa-pizza-slice, fa-bowl-food, fa-leaf и т.д.).
                             </div>
                         </div>
                     )}

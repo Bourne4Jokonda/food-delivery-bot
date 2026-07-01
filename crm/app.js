@@ -123,6 +123,7 @@ const App = () => {
     icon: 'fa-utensils',
     sort_order: 0
   });
+  const [showCategories, setShowCategories] = useState(false);
   const doLogin = async () => {
     setLoginError('');
     try {
@@ -611,12 +612,7 @@ const App = () => {
     onClick: () => setTab('zones')
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-map-location-dot"
-  }), " Зоны"), /*#__PURE__*/React.createElement("button", {
-    className: `tab ${tab === 'categories' ? 'active' : ''}`,
-    onClick: () => setTab('categories')
-  }, /*#__PURE__*/React.createElement("i", {
-    className: "fa-solid fa-tags"
-  }), " Категории")), tab === 'orders' && /*#__PURE__*/React.createElement("div", {
+  }), " Зоны")), tab === 'orders' && /*#__PURE__*/React.createElement("div", {
     className: "panel glass"
   }, /*#__PURE__*/React.createElement("div", {
     className: "panel-header"
@@ -679,6 +675,79 @@ const App = () => {
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-xmark"
   }))))))), tab === 'menu' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "panel glass",
+    style: {
+      marginBottom: 16
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "panel-header",
+    style: {
+      cursor: 'pointer'
+    },
+    onClick: () => setShowCategories(!showCategories)
+  }, /*#__PURE__*/React.createElement("h2", null, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-tags",
+    style: {
+      marginRight: 8
+    }
+  }), "Категории ", /*#__PURE__*/React.createElement("span", {
+    style: {
+      fontSize: 12,
+      color: '#8cc8a0',
+      fontWeight: 400
+    }
+  }, "(", categories.length, ")")), /*#__PURE__*/React.createElement("i", {
+    className: `fa-solid fa-chevron-${showCategories ? 'up' : 'down'}`,
+    style: {
+      color: '#8cc8a0'
+    }
+  })), showCategories && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    style: {
+      padding: '12px 24px',
+      display: 'flex',
+      justifyContent: 'flex-end'
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-success",
+    onClick: () => {
+      setNewCat({
+        name: '',
+        icon: 'fa-utensils',
+        sort_order: 0
+      });
+      setCatModal('new');
+    }
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-plus"
+  }), " Добавить")), categories.map(cat => /*#__PURE__*/React.createElement("div", {
+    key: cat.id,
+    className: "zone-item"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "zone-top"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "zone-info"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "zone-name"
+  }, /*#__PURE__*/React.createElement("i", {
+    className: `fa-solid ${cat.icon}`,
+    style: {
+      marginRight: 8
+    }
+  }), cat.name), /*#__PURE__*/React.createElement("div", {
+    className: "zone-meta"
+  }, /*#__PURE__*/React.createElement("span", null, "Порядок: ", cat.sort_order))), /*#__PURE__*/React.createElement("div", {
+    className: "zone-actions"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary",
+    onClick: () => openEditCategory(cat)
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-pen"
+  })), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-danger",
+    onClick: () => deleteCategory(cat.id)
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-trash"
+  })))))))), /*#__PURE__*/React.createElement("div", {
     className: "panel-header glass",
     style: {
       marginBottom: 16,
@@ -696,7 +765,7 @@ const App = () => {
         name: '',
         description: '',
         price: '',
-        category: 'Пицца'
+        category: categories[0]?.name || ''
       });
       setMenuModal('new');
     }
@@ -1082,80 +1151,7 @@ const App = () => {
     style: {
       marginRight: 6
     }
-  }), "Ключевые слова через запятую — бот определяет зону по адресу заказа. Бот читает зоны из базы данных при каждом заказе.")), tab === 'categories' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
-    className: "panel glass"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "panel-header"
-  }, /*#__PURE__*/React.createElement("h2", null, /*#__PURE__*/React.createElement("i", {
-    className: "fa-solid fa-tags",
-    style: {
-      marginRight: 8
-    }
-  }), "Категории меню"), /*#__PURE__*/React.createElement("button", {
-    className: "btn btn-success",
-    onClick: () => {
-      setNewCat({
-        name: '',
-        icon: 'fa-utensils',
-        sort_order: 0
-      });
-      setCatModal('new');
-    }
-  }, /*#__PURE__*/React.createElement("i", {
-    className: "fa-solid fa-plus"
-  }), " Добавить")), categories.length === 0 ? /*#__PURE__*/React.createElement("div", {
-    className: "empty"
-  }, /*#__PURE__*/React.createElement("i", {
-    className: "fa-solid fa-tag",
-    style: {
-      fontSize: 32,
-      marginBottom: 12,
-      display: 'block'
-    }
-  }), "Нет категорий") : categories.map(cat => /*#__PURE__*/React.createElement("div", {
-    key: cat.id,
-    className: "zone-item"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "zone-top"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "zone-info"
-  }, /*#__PURE__*/React.createElement("div", {
-    className: "zone-name"
-  }, /*#__PURE__*/React.createElement("i", {
-    className: `fa-solid ${cat.icon}`,
-    style: {
-      marginRight: 8
-    }
-  }), cat.name), /*#__PURE__*/React.createElement("div", {
-    className: "zone-meta"
-  }, /*#__PURE__*/React.createElement("span", null, "Порядок: ", cat.sort_order))), /*#__PURE__*/React.createElement("div", {
-    className: "zone-actions"
-  }, /*#__PURE__*/React.createElement("button", {
-    className: "btn btn-primary",
-    onClick: () => openEditCategory(cat)
-  }, /*#__PURE__*/React.createElement("i", {
-    className: "fa-solid fa-pen"
-  })), /*#__PURE__*/React.createElement("button", {
-    className: "btn btn-danger",
-    onClick: () => deleteCategory(cat.id)
-  }, /*#__PURE__*/React.createElement("i", {
-    className: "fa-solid fa-trash"
-  }))))))), /*#__PURE__*/React.createElement("div", {
-    style: {
-      marginTop: 16,
-      padding: 16,
-      background: 'rgba(30,60,42,0.5)',
-      borderRadius: 12,
-      fontSize: 13,
-      color: '#8cc8a0',
-      lineHeight: 1.6
-    }
-  }, /*#__PURE__*/React.createElement("i", {
-    className: "fa-solid fa-info-circle",
-    style: {
-      marginRight: 6
-    }
-  }), "Категории используются в меню и в боте. Иконки — классы FontAwesome (fa-pizza-slice, fa-bowl-food, fa-leaf и т.д.).")), orderDetail && /*#__PURE__*/React.createElement("div", {
+  }), "Ключевые слова через запятую — бот определяет зону по адресу заказа. Бот читает зоны из базы данных при каждом заказе.")), orderDetail && /*#__PURE__*/React.createElement("div", {
     className: "modal-overlay",
     onClick: () => setOrderDetail(null)
   }, /*#__PURE__*/React.createElement("div", {
