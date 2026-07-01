@@ -288,6 +288,30 @@ async def handle_message(event):
         elif text in CATEGORY_MAP:
             await show_category(event, CATEGORY_MAP[text])
 
+        elif text.startswith("описание"):
+            query = text.replace("описание", "").strip()
+            if not query:
+                await event.answer("Напишите «описание [название блюда]»\nНапример: «описание пицца маргарита»")
+            else:
+                async with async_session() as s:
+                    result = await s.execute(
+                        select(MenuItem).where(MenuItem.available == 1)
+                    )
+                    all_items = result.scalars().all()
+                    found = [i for i in all_items if query.lower() in i.name.lower()]
+                    if not found:
+                        await event.answer(f"Блюдо «{query}» не найдено в меню")
+                    elif len(found) == 1:
+                        item = found[0]
+                        text_out = f"📋 {item.name}\n\n{item.description or 'Описание отсутствует'}\n\nЦена: {item.price}₽\nКатегория: {item.category}"
+                        await event.answer(text_out, keyboard=get_menu_keyboard())
+                    else:
+                        text_out = "Найдено несколько блюд:\n\n"
+                        for i in found:
+                            text_out += f"- {i.name} — {i.price}₽\n"
+                        text_out += "\nУточните название для подробного описания"
+                        await event.answer(text_out, keyboard=get_menu_keyboard())
+
         elif text == "корзина":
             await show_cart(event, vk_id, session)
 
@@ -299,8 +323,13 @@ async def handle_message(event):
                 "Я могу помочь вам с:\n\n"
                 "Просмотр меню\n"
                 "Оформление заказа\n"
-                "Отслеживание заказов\n\n"
-                "Просто напишите, что вы хотите заказать, и я помогу!",
+                "Отслеживание заказов\n"
+                "Подробное описание блюд\n\n"
+                "Команды:\n"
+                "• «описание [название]» — узнать подробнее о блюде\n"
+                "• «меню» — открыть меню\n"
+                "• «корзина» — посмотреть корзину\n"
+                "• «мои заказы» — статус заказов",
                 keyboard=get_main_menu_keyboard()
             )
 
@@ -451,10 +480,9 @@ async def show_category(event, category: str):
         text = f"{category}:\n\n"
         for item in items:
             text += f"- {item.name} — {item.price}₽\n"
-            if item.description:
-                text += f"  {item.description}\n"
 
         text += "\nНапишите название блюда, чтобы добавить в корзину"
+        text += "\nНапишите «описание [название]» чтобы узнать подробнее"
         await event.answer(text, keyboard=get_menu_keyboard())
 
 

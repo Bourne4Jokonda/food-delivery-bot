@@ -46,7 +46,7 @@ async def init_menu():
                 Category(name="Рамен", icon="fa-bowl-food", sort_order=1),
                 Category(name="Салаты", icon="fa-leaf", sort_order=2),
                 Category(name="Бургеры", icon="fa-burger", sort_order=3),
-                Category(name="Снэки", icon="fa-french-fries", sort_order=4),
+                Category(name="Снэки", icon="fa-cookie", sort_order=4),
                 Category(name="Напитки", icon="fa-wine-glass", sort_order=5),
             ]
             session.add_all(categories)
