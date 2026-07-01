@@ -124,6 +124,7 @@ const App = () => {
     sort_order: 0
   });
   const [showCategories, setShowCategories] = useState(false);
+  const [menuView, setMenuView] = useState('all');
   const doLogin = async () => {
     setLoginError('');
     try {
@@ -758,7 +759,39 @@ const App = () => {
     style: {
       marginRight: 8
     }
-  }), "Меню"), /*#__PURE__*/React.createElement("button", {
+  }), "Меню"), /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 8,
+      alignItems: 'center'
+    }
+  }, /*#__PURE__*/React.createElement("div", {
+    style: {
+      display: 'flex',
+      gap: 4,
+      background: 'rgba(15,26,20,0.6)',
+      borderRadius: 8,
+      padding: 3
+    }
+  }, /*#__PURE__*/React.createElement("button", {
+    className: `btn ${menuView === 'all' ? 'btn-success' : 'btn-ghost'}`,
+    onClick: () => setMenuView('all'),
+    style: {
+      padding: '6px 12px',
+      fontSize: 11
+    }
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-grid-2"
+  }), " Все"), /*#__PURE__*/React.createElement("button", {
+    className: `btn ${menuView === 'grouped' ? 'btn-success' : 'btn-ghost'}`,
+    onClick: () => setMenuView('grouped'),
+    style: {
+      padding: '6px 12px',
+      fontSize: 11
+    }
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-layer-group"
+  }), " По категориям")), /*#__PURE__*/React.createElement("button", {
     className: "btn btn-success",
     onClick: () => {
       setNewItem({
@@ -771,7 +804,7 @@ const App = () => {
     }
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-plus"
-  }), " Добавить")), /*#__PURE__*/React.createElement("div", {
+  }), " Добавить"))), menuView === 'all' ? /*#__PURE__*/React.createElement("div", {
     className: "menu-grid"
   }, menu.map(item => /*#__PURE__*/React.createElement("div", {
     key: item.id,
@@ -801,7 +834,63 @@ const App = () => {
     onClick: () => deleteMenuItem(item.id)
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-trash"
-  }))))))), tab === 'bot' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+  })))))) : categories.map(cat => {
+    const catItems = menu.filter(i => i.category === cat.name);
+    if (catItems.length === 0) return null;
+    return /*#__PURE__*/React.createElement("div", {
+      key: cat.id,
+      style: {
+        marginBottom: 16
+      }
+    }, /*#__PURE__*/React.createElement("div", {
+      style: {
+        padding: '12px 0 8px',
+        fontSize: 14,
+        fontWeight: 700,
+        color: '#e0f0e5',
+        display: 'flex',
+        alignItems: 'center',
+        gap: 8
+      }
+    }, /*#__PURE__*/React.createElement("i", {
+      className: `fa-solid ${cat.icon}`,
+      style: {
+        color: '#5cdb7e'
+      }
+    }), cat.name, /*#__PURE__*/React.createElement("span", {
+      style: {
+        fontSize: 11,
+        color: '#8cc8a0',
+        fontWeight: 400
+      }
+    }, "(", catItems.length, ")")), /*#__PURE__*/React.createElement("div", {
+      className: "menu-grid",
+      style: {
+        padding: '0 0 16px'
+      }
+    }, catItems.map(item => /*#__PURE__*/React.createElement("div", {
+      key: item.id,
+      className: "menu-card glass neo"
+    }, /*#__PURE__*/React.createElement("div", {
+      className: "card-top"
+    }, /*#__PURE__*/React.createElement("h4", null, item.name)), /*#__PURE__*/React.createElement("div", {
+      className: "desc"
+    }, item.description), /*#__PURE__*/React.createElement("div", {
+      className: "price"
+    }, item.price, "₽"), /*#__PURE__*/React.createElement("div", {
+      className: "card-actions"
+    }, /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-primary",
+      onClick: () => openEdit(item)
+    }, /*#__PURE__*/React.createElement("i", {
+      className: "fa-solid fa-pen"
+    }), " Ред."), /*#__PURE__*/React.createElement("button", {
+      className: "btn btn-danger",
+      onClick: () => deleteMenuItem(item.id)
+    }, /*#__PURE__*/React.createElement("i", {
+      className: "fa-solid fa-trash"
+    })))))));
+  })), tab === 'bot' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
     className: "panel glass",
     style: {
       marginBottom: 16
