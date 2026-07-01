@@ -115,3 +115,12 @@ class DeliveryZone(Base):
     enabled = Column(Integer, default=1)
     sort_order = Column(Integer, default=0)
     keywords = Column(String, default="")  # comma-separated list of settlement names
+
+
+class Category(Base):
+    __tablename__ = "categories"
+
+    id = Column(Integer, primary_key=True)
+    name = Column(String, nullable=False, unique=True)
+    icon = Column(String, default="fa-utensils")
+    sort_order = Column(Integer, default=0)

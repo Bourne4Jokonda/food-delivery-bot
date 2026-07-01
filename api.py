@@ -9,7 +9,7 @@ from pathlib import Path
 from contextlib import asynccontextmanager
 import os, httpx, time
 from database.db import engine, async_session, init_db
-from database.models import Base, Order, OrderItem, MenuItem, OrderStatus, User, UserRole, DeliveryZone
+from database.models import Base, Order, OrderItem, MenuItem, OrderStatus, User, UserRole, DeliveryZone, Category
 
 
 CRM_API_KEY = os.getenv("CRM_API_KEY", "")
@@ -68,6 +68,12 @@ class DeliveryZoneCreate(BaseModel):
     enabled: bool = True
     sort_order: int = 0
     keywords: str = ""
+
+
+class CategoryCreate(BaseModel):
+    name: str
+    icon: str = "fa-utensils"
+    sort_order: int = 0
 
 
 class AuthCheck(BaseModel):
@@ -446,6 +452,63 @@ async def delete_delivery_zone(zone_id: int):
         if not db_zone:
             raise HTTPException(status_code=404, detail="Zone not found")
         await session.delete(db_zone)
+        await session.commit()
+        return {"status": "deleted"}
+
+
+@app.get("/api/categories", dependencies=[auth_dep])
+async def get_categories():
+    async with async_session() as session:
+        result = await session.execute(
+            select(Category).order_by(Category.sort_order)
+        )
+        cats = result.scalars().all()
+        return [
+            {
+                "id": c.id,
+                "name": c.name,
+                "icon": c.icon,
+                "sort_order": c.sort_order,
+            }
+            for c in cats
+        ]
+
+
+@app.post("/api/categories", dependencies=[auth_dep])
+async def create_category(cat: CategoryCreate):
+    async with async_session() as session:
+        new_cat = Category(
+            name=cat.name,
+            icon=cat.icon,
+            sort_order=cat.sort_order,
+        )
+        session.add(new_cat)
+        await session.commit()
+        return {"id": new_cat.id, "status": "created"}
+
+
+@app.patch("/api/categories/{cat_id}", dependencies=[auth_dep])
+async def update_category(cat_id: int, cat: CategoryCreate):
+    async with async_session() as session:
+        result = await session.execute(select(Category).where(Category.id == cat_id))
+        db_cat = result.scalar_one_or_none()
+        if not db_cat:
+            raise HTTPException(status_code=404, detail="Category not found")
+        db_cat.name = cat.name
+        db_cat.icon = cat.icon
+        db_cat.sort_order = cat.sort_order
+        await session.commit()
+        return {"status": "updated"}
+
+
+@app.delete("/api/categories/{cat_id}", dependencies=[auth_dep])
+async def delete_category(cat_id: int):
+    async with async_session() as session:
+        result = await session.execute(select(Category).where(Category.id == cat_id))
+        db_cat = result.scalar_one_or_none()
+        if not db_cat:
+            raise HTTPException(status_code=404, detail="Category not found")
+        await session.delete(db_cat)
         await session.commit()
         return {"status": "deleted"}
 

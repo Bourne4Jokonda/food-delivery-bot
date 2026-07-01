@@ -116,6 +116,13 @@ const App = () => {
     sort_order: 0,
     keywords: ''
   });
+  const [categories, setCategories] = useState([]);
+  const [catModal, setCatModal] = useState(null);
+  const [newCat, setNewCat] = useState({
+    name: '',
+    icon: 'fa-utensils',
+    sort_order: 0
+  });
   const doLogin = async () => {
     setLoginError('');
     try {
@@ -202,19 +209,30 @@ const App = () => {
       console.error(e);
     }
   }, []);
+  const loadCategories = useCallback(async () => {
+    try {
+      const r = await apiFetch(`${API}/categories`);
+      const c = r.ok ? await r.json() : [];
+      setCategories(Array.isArray(c) ? c : []);
+    } catch (e) {
+      console.error(e);
+    }
+  }, []);
   useEffect(() => {
     load();
     loadBotStatus();
     loadStaff();
     loadZones();
+    loadCategories();
     const t = setInterval(() => {
       load();
       loadBotStatus();
       loadStaff();
       loadZones();
+      loadCategories();
     }, 10000);
     return () => clearInterval(t);
-  }, [load, loadBotStatus, loadStaff, loadZones]);
+  }, [load, loadBotStatus, loadStaff, loadZones, loadCategories]);
   useEffect(() => {
     if (tab === 'bot') {
       loadBotLogs();
@@ -386,6 +404,53 @@ const App = () => {
     });
     setZoneModal(zone.id);
   };
+  const saveCategory = async () => {
+    if (!newCat.name) return alert('Введите название категории');
+    const body = {
+      name: newCat.name,
+      icon: newCat.icon,
+      sort_order: parseInt(newCat.sort_order) || 0
+    };
+    if (catModal === 'new') {
+      await apiFetch(`${API}/categories`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+    } else {
+      await apiFetch(`${API}/categories/${catModal}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(body)
+      });
+    }
+    setCatModal(null);
+    setNewCat({
+      name: '',
+      icon: 'fa-utensils',
+      sort_order: 0
+    });
+    loadCategories();
+  };
+  const deleteCategory = async id => {
+    if (!confirm('Удалить категорию?')) return;
+    await apiFetch(`${API}/categories/${id}`, {
+      method: 'DELETE'
+    });
+    loadCategories();
+  };
+  const openEditCategory = cat => {
+    setNewCat({
+      name: cat.name,
+      icon: cat.icon,
+      sort_order: cat.sort_order
+    });
+    setCatModal(cat.id);
+  };
   const activeOrders = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled');
   if (!authed) {
     return /*#__PURE__*/React.createElement("div", {
@@ -546,7 +611,12 @@ const App = () => {
     onClick: () => setTab('zones')
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-map-location-dot"
-  }), " Зоны")), tab === 'orders' && /*#__PURE__*/React.createElement("div", {
+  }), " Зоны"), /*#__PURE__*/React.createElement("button", {
+    className: `tab ${tab === 'categories' ? 'active' : ''}`,
+    onClick: () => setTab('categories')
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-tags"
+  }), " Категории")), tab === 'orders' && /*#__PURE__*/React.createElement("div", {
     className: "panel glass"
   }, /*#__PURE__*/React.createElement("div", {
     className: "panel-header"
@@ -636,13 +706,13 @@ const App = () => {
     className: "menu-grid"
   }, menu.map(item => /*#__PURE__*/React.createElement("div", {
     key: item.id,
-    className: `menu-card glass neo ${CAT_MAP[item.category] || ''}`
+    className: "menu-card glass neo"
   }, /*#__PURE__*/React.createElement("div", {
     className: "card-top"
   }, /*#__PURE__*/React.createElement("h4", null, item.name), /*#__PURE__*/React.createElement("span", {
     className: "category-tag"
   }, /*#__PURE__*/React.createElement("i", {
-    className: `fa-solid ${CAT_ICON[item.category] || 'fa-utensils'}`,
+    className: `fa-solid ${categories.find(c => c.name === item.category)?.icon || 'fa-utensils'}`,
     style: {
       marginRight: 4
     }
@@ -1012,7 +1082,80 @@ const App = () => {
     style: {
       marginRight: 6
     }
-  }), "Ключевые слова через запятую — бот определяет зону по адресу заказа. Бот читает зоны из базы данных при каждом заказе.")), orderDetail && /*#__PURE__*/React.createElement("div", {
+  }), "Ключевые слова через запятую — бот определяет зону по адресу заказа. Бот читает зоны из базы данных при каждом заказе.")), tab === 'categories' && /*#__PURE__*/React.createElement("div", null, /*#__PURE__*/React.createElement("div", {
+    className: "panel glass"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "panel-header"
+  }, /*#__PURE__*/React.createElement("h2", null, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-tags",
+    style: {
+      marginRight: 8
+    }
+  }), "Категории меню"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-success",
+    onClick: () => {
+      setNewCat({
+        name: '',
+        icon: 'fa-utensils',
+        sort_order: 0
+      });
+      setCatModal('new');
+    }
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-plus"
+  }), " Добавить")), categories.length === 0 ? /*#__PURE__*/React.createElement("div", {
+    className: "empty"
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-tag",
+    style: {
+      fontSize: 32,
+      marginBottom: 12,
+      display: 'block'
+    }
+  }), "Нет категорий") : categories.map(cat => /*#__PURE__*/React.createElement("div", {
+    key: cat.id,
+    className: "zone-item"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "zone-top"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "zone-info"
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "zone-name"
+  }, /*#__PURE__*/React.createElement("i", {
+    className: `fa-solid ${cat.icon}`,
+    style: {
+      marginRight: 8
+    }
+  }), cat.name), /*#__PURE__*/React.createElement("div", {
+    className: "zone-meta"
+  }, /*#__PURE__*/React.createElement("span", null, "Порядок: ", cat.sort_order))), /*#__PURE__*/React.createElement("div", {
+    className: "zone-actions"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-primary",
+    onClick: () => openEditCategory(cat)
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-pen"
+  })), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-danger",
+    onClick: () => deleteCategory(cat.id)
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-trash"
+  }))))))), /*#__PURE__*/React.createElement("div", {
+    style: {
+      marginTop: 16,
+      padding: 16,
+      background: 'rgba(30,60,42,0.5)',
+      borderRadius: 12,
+      fontSize: 13,
+      color: '#8cc8a0',
+      lineHeight: 1.6
+    }
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-info-circle",
+    style: {
+      marginRight: 6
+    }
+  }), "Категории используются в меню и в боте. Иконки — классы FontAwesome (fa-pizza-slice, fa-bowl-food, fa-leaf и т.д.).")), orderDetail && /*#__PURE__*/React.createElement("div", {
     className: "modal-overlay",
     onClick: () => setOrderDetail(null)
   }, /*#__PURE__*/React.createElement("div", {
@@ -1163,10 +1306,10 @@ const App = () => {
       ...newItem,
       category: e.target.value
     })
-  }, ['Пицца', 'Рамен', 'Салаты', 'Бургеры', 'Снэки', 'Напитки'].map(c => /*#__PURE__*/React.createElement("option", {
-    key: c,
-    value: c
-  }, c))), /*#__PURE__*/React.createElement("div", {
+  }, categories.map(c => /*#__PURE__*/React.createElement("option", {
+    key: c.id,
+    value: c.name
+  }, c.name))), /*#__PURE__*/React.createElement("div", {
     className: "btn-row"
   }, /*#__PURE__*/React.createElement("button", {
     className: "btn btn-ghost",
@@ -1377,6 +1520,72 @@ const App = () => {
   }), " Отмена"), /*#__PURE__*/React.createElement("button", {
     className: "btn btn-success",
     onClick: saveZone
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-check"
+  }), " Сохранить")))), catModal !== null && /*#__PURE__*/React.createElement("div", {
+    className: "modal-overlay",
+    onClick: () => setCatModal(null)
+  }, /*#__PURE__*/React.createElement("div", {
+    className: "modal glass neo",
+    onClick: e => e.stopPropagation()
+  }, /*#__PURE__*/React.createElement("h2", null, /*#__PURE__*/React.createElement("i", {
+    className: `fa-solid ${catModal === 'new' ? 'fa-plus' : 'fa-pen'}`,
+    style: {
+      marginRight: 8
+    }
+  }), catModal === 'new' ? 'Новая категория' : 'Редактировать категорию'), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 12,
+      color: '#8cc8a0',
+      marginBottom: 4,
+      display: 'block'
+    }
+  }, "Название"), /*#__PURE__*/React.createElement("input", {
+    placeholder: "Пицца",
+    value: newCat.name,
+    onChange: e => setNewCat({
+      ...newCat,
+      name: e.target.value
+    })
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 12,
+      color: '#8cc8a0',
+      marginBottom: 4,
+      display: 'block'
+    }
+  }, "Иконка (FontAwesome)"), /*#__PURE__*/React.createElement("input", {
+    placeholder: "fa-pizza-slice",
+    value: newCat.icon,
+    onChange: e => setNewCat({
+      ...newCat,
+      icon: e.target.value
+    })
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 12,
+      color: '#8cc8a0',
+      marginBottom: 4,
+      display: 'block'
+    }
+  }, "Порядок сортировки"), /*#__PURE__*/React.createElement("input", {
+    placeholder: "0",
+    type: "number",
+    value: newCat.sort_order,
+    onChange: e => setNewCat({
+      ...newCat,
+      sort_order: e.target.value
+    })
+  }), /*#__PURE__*/React.createElement("div", {
+    className: "btn-row"
+  }, /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-ghost",
+    onClick: () => setCatModal(null)
+  }, /*#__PURE__*/React.createElement("i", {
+    className: "fa-solid fa-xmark"
+  }), " Отмена"), /*#__PURE__*/React.createElement("button", {
+    className: "btn btn-success",
+    onClick: saveCategory
   }, /*#__PURE__*/React.createElement("i", {
     className: "fa-solid fa-check"
   }), " Сохранить")))));

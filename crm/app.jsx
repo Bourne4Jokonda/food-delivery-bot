@@ -56,6 +56,9 @@ const { useState, useEffect, useCallback } = React;
             const [zones, setZones] = useState([]);
             const [zoneModal, setZoneModal] = useState(null);
             const [newZone, setNewZone] = useState({ name: '', cost: '', free_from: '', enabled: true, sort_order: 0, keywords: '' });
+            const [categories, setCategories] = useState([]);
+            const [catModal, setCatModal] = useState(null);
+            const [newCat, setNewCat] = useState({ name: '', icon: 'fa-utensils', sort_order: 0 });
 
             const doLogin = async () => {
                 setLoginError('');
@@ -123,7 +126,15 @@ const { useState, useEffect, useCallback } = React;
                 } catch (e) { console.error(e); }
             }, []);
 
-            useEffect(() => { load(); loadBotStatus(); loadStaff(); loadZones(); const t = setInterval(() => { load(); loadBotStatus(); loadStaff(); loadZones(); }, 10000); return () => clearInterval(t); }, [load, loadBotStatus, loadStaff, loadZones]);
+            const loadCategories = useCallback(async () => {
+                try {
+                    const r = await apiFetch(`${API}/categories`);
+                    const c = r.ok ? await r.json() : [];
+                    setCategories(Array.isArray(c) ? c : []);
+                } catch (e) { console.error(e); }
+            }, []);
+
+            useEffect(() => { load(); loadBotStatus(); loadStaff(); loadZones(); loadCategories(); const t = setInterval(() => { load(); loadBotStatus(); loadStaff(); loadZones(); loadCategories(); }, 10000); return () => clearInterval(t); }, [load, loadBotStatus, loadStaff, loadZones, loadCategories]);
             useEffect(() => { if (tab === 'bot') { loadBotLogs(); const t = setInterval(loadBotLogs, 5000); return () => clearInterval(t); } }, [tab, loadBotLogs]);
 
             const updateStatus = async (id, status) => {
@@ -221,6 +232,30 @@ const { useState, useEffect, useCallback } = React;
                 setZoneModal(zone.id);
             };
 
+            const saveCategory = async () => {
+                if (!newCat.name) return alert('Введите название категории');
+                const body = { name: newCat.name, icon: newCat.icon, sort_order: parseInt(newCat.sort_order) || 0 };
+                if (catModal === 'new') {
+                    await apiFetch(`${API}/categories`, { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                } else {
+                    await apiFetch(`${API}/categories/${catModal}`, { method: 'PATCH', headers: {'Content-Type':'application/json'}, body: JSON.stringify(body) });
+                }
+                setCatModal(null);
+                setNewCat({ name: '', icon: 'fa-utensils', sort_order: 0 });
+                loadCategories();
+            };
+
+            const deleteCategory = async (id) => {
+                if (!confirm('Удалить категорию?')) return;
+                await apiFetch(`${API}/categories/${id}`, { method: 'DELETE' });
+                loadCategories();
+            };
+
+            const openEditCategory = (cat) => {
+                setNewCat({ name: cat.name, icon: cat.icon, sort_order: cat.sort_order });
+                setCatModal(cat.id);
+            };
+
             const activeOrders = orders.filter(o => o.status !== 'delivered' && o.status !== 'cancelled');
 
             if (!authed) {
@@ -290,6 +325,9 @@ const { useState, useEffect, useCallback } = React;
                         <button className={`tab ${tab === 'zones' ? 'active' : ''}`} onClick={() => setTab('zones')}>
                             <i className="fa-solid fa-map-location-dot"></i> Зоны
                         </button>
+                        <button className={`tab ${tab === 'categories' ? 'active' : ''}`} onClick={() => setTab('categories')}>
+                            <i className="fa-solid fa-tags"></i> Категории
+                        </button>
                     </div>
 
                     {tab === 'orders' && (
@@ -346,10 +384,10 @@ const { useState, useEffect, useCallback } = React;
                             </div>
                             <div className="menu-grid">
                                 {menu.map(item => (
-                                    <div key={item.id} className={`menu-card glass neo ${CAT_MAP[item.category] || ''}`}>
+                                    <div key={item.id} className="menu-card glass neo">
                                         <div className="card-top">
                                             <h4>{item.name}</h4>
-                                            <span className="category-tag"><i className={`fa-solid ${CAT_ICON[item.category] || 'fa-utensils'}`} style={{marginRight: 4}}></i>{item.category}</span>
+                                            <span className="category-tag"><i className={`fa-solid ${categories.find(c => c.name === item.category)?.icon || 'fa-utensils'}`} style={{marginRight: 4}}></i>{item.category}</span>
                                         </div>
                                         <div className="desc">{item.description}</div>
                                         <div className="price">{item.price}₽</div>
@@ -516,6 +554,45 @@ const { useState, useEffect, useCallback } = React;
                         </div>
                     )}
 
+                    {tab === 'categories' && (
+                        <div>
+                            <div className="panel glass">
+                                <div className="panel-header">
+                                    <h2><i className="fa-solid fa-tags" style={{marginRight: 8}}></i>Категории меню</h2>
+                                    <button className="btn btn-success" onClick={() => { setNewCat({name:'',icon:'fa-utensils',sort_order:0}); setCatModal('new'); }}>
+                                        <i className="fa-solid fa-plus"></i> Добавить
+                                    </button>
+                                </div>
+                                {categories.length === 0 ? (
+                                    <div className="empty"><i className="fa-solid fa-tag" style={{fontSize: 32, marginBottom: 12, display: 'block'}}></i>Нет категорий</div>
+                                ) : (
+                                    categories.map(cat => (
+                                        <div key={cat.id} className="zone-item">
+                                            <div className="zone-top">
+                                                <div className="zone-info">
+                                                    <div className="zone-name">
+                                                        <i className={`fa-solid ${cat.icon}`} style={{marginRight: 8}}></i>{cat.name}
+                                                    </div>
+                                                    <div className="zone-meta">
+                                                        <span>Порядок: {cat.sort_order}</span>
+                                                    </div>
+                                                </div>
+                                                <div className="zone-actions">
+                                                    <button className="btn btn-primary" onClick={() => openEditCategory(cat)}><i className="fa-solid fa-pen"></i></button>
+                                                    <button className="btn btn-danger" onClick={() => deleteCategory(cat.id)}><i className="fa-solid fa-trash"></i></button>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    ))
+                                )}
+                            </div>
+                            <div style={{marginTop: 16, padding: 16, background: 'rgba(30,60,42,0.5)', borderRadius: 12, fontSize: 13, color: '#8cc8a0', lineHeight: 1.6}}>
+                                <i className="fa-solid fa-info-circle" style={{marginRight: 6}}></i>
+                                Категории используются в меню и в боте. Иконки — классы FontAwesome (fa-pizza-slice, fa-bowl-food, fa-leaf и т.д.).
+                            </div>
+                        </div>
+                    )}
+
                     {orderDetail && (
                         <div className="modal-overlay" onClick={() => setOrderDetail(null)}>
                             <div className="modal glass neo" onClick={(e) => e.stopPropagation()}>
@@ -581,7 +658,7 @@ const { useState, useEffect, useCallback } = React;
                                 <input placeholder="380" type="number" value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} />
                                 <label style={{fontSize: 12, color: '#8cc8a0', marginBottom: 4, display: 'block'}}>Категория</label>
                                 <select value={newItem.category} onChange={e => setNewItem({...newItem, category: e.target.value})}>
-                                    {['Пицца','Рамен','Салаты','Бургеры','Снэки','Напитки'].map(c => <option key={c} value={c}>{c}</option>)}
+                                    {categories.map(c => <option key={c.id} value={c.name}>{c.name}</option>)}
                                 </select>
                                 <div className="btn-row">
                                     <button className="btn btn-ghost" onClick={() => setMenuModal(null)}><i className="fa-solid fa-xmark"></i> Отмена</button>
@@ -634,6 +711,24 @@ const { useState, useEffect, useCallback } = React;
                                 <div className="btn-row">
                                     <button className="btn btn-ghost" onClick={() => setZoneModal(null)}><i className="fa-solid fa-xmark"></i> Отмена</button>
                                     <button className="btn btn-success" onClick={saveZone}><i className="fa-solid fa-check"></i> Сохранить</button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+
+                    {catModal !== null && (
+                        <div className="modal-overlay" onClick={() => setCatModal(null)}>
+                            <div className="modal glass neo" onClick={(e) => e.stopPropagation()}>
+                                <h2><i className={`fa-solid ${catModal === 'new' ? 'fa-plus' : 'fa-pen'}`} style={{marginRight: 8}}></i>{catModal === 'new' ? 'Новая категория' : 'Редактировать категорию'}</h2>
+                                <label style={{fontSize: 12, color: '#8cc8a0', marginBottom: 4, display: 'block'}}>Название</label>
+                                <input placeholder="Пицца" value={newCat.name} onChange={e => setNewCat({...newCat, name: e.target.value})} />
+                                <label style={{fontSize: 12, color: '#8cc8a0', marginBottom: 4, display: 'block'}}>Иконка (FontAwesome)</label>
+                                <input placeholder="fa-pizza-slice" value={newCat.icon} onChange={e => setNewCat({...newCat, icon: e.target.value})} />
+                                <label style={{fontSize: 12, color: '#8cc8a0', marginBottom: 4, display: 'block'}}>Порядок сортировки</label>
+                                <input placeholder="0" type="number" value={newCat.sort_order} onChange={e => setNewCat({...newCat, sort_order: e.target.value})} />
+                                <div className="btn-row">
+                                    <button className="btn btn-ghost" onClick={() => setCatModal(null)}><i className="fa-solid fa-xmark"></i> Отмена</button>
+                                    <button className="btn btn-success" onClick={saveCategory}><i className="fa-solid fa-check"></i> Сохранить</button>
                                 </div>
                             </div>
                         </div>

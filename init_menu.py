@@ -1,7 +1,7 @@
 import asyncio
 from sqlalchemy import select
 from database.db import engine, async_session
-from database.models import MenuItem, DeliveryZone, Base
+from database.models import MenuItem, DeliveryZone, Category, Base
 
 
 async def init_menu():
@@ -35,6 +35,23 @@ async def init_menu():
         session.add_all(menu_items)
         await session.commit()
         print(f"Загружено {len(menu_items)} блюд в меню")
+
+    async with async_session() as session:
+        result = await session.execute(select(Category))
+        if result.scalars().first():
+            print("Категории уже загружены")
+        else:
+            categories = [
+                Category(name="Пицца", icon="fa-pizza-slice", sort_order=0),
+                Category(name="Рамен", icon="fa-bowl-food", sort_order=1),
+                Category(name="Салаты", icon="fa-leaf", sort_order=2),
+                Category(name="Бургеры", icon="fa-burger", sort_order=3),
+                Category(name="Снэки", icon="fa-french-fries", sort_order=4),
+                Category(name="Напитки", icon="fa-wine-glass", sort_order=5),
+            ]
+            session.add_all(categories)
+            await session.commit()
+            print(f"Загружено {len(categories)} категорий")
 
     async with async_session() as session:
         result = await session.execute(select(DeliveryZone))
