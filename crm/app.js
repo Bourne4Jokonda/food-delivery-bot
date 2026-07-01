@@ -1107,29 +1107,57 @@ const App = () => {
     style: {
       marginRight: 8
     }
-  }), menuModal === 'new' ? 'Новое блюдо' : 'Редактировать'), /*#__PURE__*/React.createElement("input", {
-    placeholder: "Название",
+  }), menuModal === 'new' ? 'Новое блюдо' : 'Редактировать'), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 12,
+      color: '#8cc8a0',
+      marginBottom: 4,
+      display: 'block'
+    }
+  }, "Название"), /*#__PURE__*/React.createElement("input", {
+    placeholder: "Рамен классический",
     value: newItem.name,
     onChange: e => setNewItem({
       ...newItem,
       name: e.target.value
     })
-  }), /*#__PURE__*/React.createElement("input", {
-    placeholder: "Описание",
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 12,
+      color: '#8cc8a0',
+      marginBottom: 4,
+      display: 'block'
+    }
+  }, "Описание"), /*#__PURE__*/React.createElement("input", {
+    placeholder: "Традиционный японский рамен",
     value: newItem.description,
     onChange: e => setNewItem({
       ...newItem,
       description: e.target.value
     })
-  }), /*#__PURE__*/React.createElement("input", {
-    placeholder: "Цена (₽)",
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 12,
+      color: '#8cc8a0',
+      marginBottom: 4,
+      display: 'block'
+    }
+  }, "Цена (₽)"), /*#__PURE__*/React.createElement("input", {
+    placeholder: "380",
     type: "number",
     value: newItem.price,
     onChange: e => setNewItem({
       ...newItem,
       price: e.target.value
     })
-  }), /*#__PURE__*/React.createElement("select", {
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 12,
+      color: '#8cc8a0',
+      marginBottom: 4,
+      display: 'block'
+    }
+  }, "Категория"), /*#__PURE__*/React.createElement("select", {
     value: newItem.category,
     onChange: e => setNewItem({
       ...newItem,
@@ -1161,22 +1189,43 @@ const App = () => {
     style: {
       marginRight: 8
     }
-  }), "Добавить сотрудника"), /*#__PURE__*/React.createElement("input", {
-    placeholder: "VK ID (число)",
+  }), "Добавить сотрудника"), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 12,
+      color: '#8cc8a0',
+      marginBottom: 4,
+      display: 'block'
+    }
+  }, "VK ID"), /*#__PURE__*/React.createElement("input", {
+    placeholder: "Числовой ID из VK",
     type: "number",
     value: newStaff.vk_id,
     onChange: e => setNewStaff({
       ...newStaff,
       vk_id: e.target.value
     })
-  }), /*#__PURE__*/React.createElement("input", {
-    placeholder: "Имя (необязательно)",
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 12,
+      color: '#8cc8a0',
+      marginBottom: 4,
+      display: 'block'
+    }
+  }, "Имя (необязательно)"), /*#__PURE__*/React.createElement("input", {
+    placeholder: "Иван",
     value: newStaff.name,
     onChange: e => setNewStaff({
       ...newStaff,
       name: e.target.value
     })
-  }), /*#__PURE__*/React.createElement("select", {
+  }), /*#__PURE__*/React.createElement("label", {
+    style: {
+      fontSize: 12,
+      color: '#8cc8a0',
+      marginBottom: 4,
+      display: 'block'
+    }
+  }, "Роль"), /*#__PURE__*/React.createElement("select", {
     value: newStaff.role,
     onChange: e => setNewStaff({
       ...newStaff,

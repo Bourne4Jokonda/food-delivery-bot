@@ -573,9 +573,13 @@ const { useState, useEffect, useCallback } = React;
                         <div className="modal-overlay" onClick={() => setMenuModal(null)}>
                             <div className="modal glass neo" onClick={(e) => e.stopPropagation()}>
                                 <h2><i className={`fa-solid ${menuModal === 'new' ? 'fa-plus' : 'fa-pen'}`} style={{marginRight: 8}}></i>{menuModal === 'new' ? 'Новое блюдо' : 'Редактировать'}</h2>
-                                <input placeholder="Название" value={newItem.name} onChange={e => setNewItem({...newItem, name: e.target.value})} />
-                                <input placeholder="Описание" value={newItem.description} onChange={e => setNewItem({...newItem, description: e.target.value})} />
-                                <input placeholder="Цена (₽)" type="number" value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} />
+                                <label style={{fontSize: 12, color: '#8cc8a0', marginBottom: 4, display: 'block'}}>Название</label>
+                                <input placeholder="Рамен классический" value={newItem.name} onChange={e => setNewItem({...newItem, name: e.target.value})} />
+                                <label style={{fontSize: 12, color: '#8cc8a0', marginBottom: 4, display: 'block'}}>Описание</label>
+                                <input placeholder="Традиционный японский рамен" value={newItem.description} onChange={e => setNewItem({...newItem, description: e.target.value})} />
+                                <label style={{fontSize: 12, color: '#8cc8a0', marginBottom: 4, display: 'block'}}>Цена (₽)</label>
+                                <input placeholder="380" type="number" value={newItem.price} onChange={e => setNewItem({...newItem, price: e.target.value})} />
+                                <label style={{fontSize: 12, color: '#8cc8a0', marginBottom: 4, display: 'block'}}>Категория</label>
                                 <select value={newItem.category} onChange={e => setNewItem({...newItem, category: e.target.value})}>
                                     {['Пицца','Рамен','Салаты','Бургеры','Снэки','Напитки'].map(c => <option key={c} value={c}>{c}</option>)}
                                 </select>
@@ -591,8 +595,11 @@ const { useState, useEffect, useCallback } = React;
                         <div className="modal-overlay" onClick={() => setStaffModal(false)}>
                             <div className="modal glass neo" onClick={(e) => e.stopPropagation()}>
                                 <h2><i className="fa-solid fa-user-plus" style={{marginRight: 8}}></i>Добавить сотрудника</h2>
-                                <input placeholder="VK ID (число)" type="number" value={newStaff.vk_id} onChange={e => setNewStaff({...newStaff, vk_id: e.target.value})} />
-                                <input placeholder="Имя (необязательно)" value={newStaff.name} onChange={e => setNewStaff({...newStaff, name: e.target.value})} />
+                                <label style={{fontSize: 12, color: '#8cc8a0', marginBottom: 4, display: 'block'}}>VK ID</label>
+                                <input placeholder="Числовой ID из VK" type="number" value={newStaff.vk_id} onChange={e => setNewStaff({...newStaff, vk_id: e.target.value})} />
+                                <label style={{fontSize: 12, color: '#8cc8a0', marginBottom: 4, display: 'block'}}>Имя (необязательно)</label>
+                                <input placeholder="Иван" value={newStaff.name} onChange={e => setNewStaff({...newStaff, name: e.target.value})} />
+                                <label style={{fontSize: 12, color: '#8cc8a0', marginBottom: 4, display: 'block'}}>Роль</label>
                                 <select value={newStaff.role} onChange={e => setNewStaff({...newStaff, role: e.target.value})}>
                                     <option value="admin">👑 Админ</option>
                                     <option value="kitchen">👨‍🍳 Кухня</option>
