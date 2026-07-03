@@ -13,6 +13,7 @@ from database.models import Base, Order, OrderItem, MenuItem, OrderStatus, User,
 
 
 CRM_API_KEY = os.getenv("CRM_API_KEY", "")
+CRM_ALLOWED_ORIGINS = [o.strip() for o in os.getenv("CRM_ALLOWED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080").split(",") if o.strip()]
 
 
 async def verify_api_key(request: Request):
@@ -37,7 +38,7 @@ app = FastAPI(lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=CRM_ALLOWED_ORIGINS,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -359,6 +360,7 @@ async def remove_staff(user_id: int):
 
 BOT_LOG_FILE = Path(__file__).parent / "bot_out.log"
 BOT_START_TIME_FILE = Path(__file__).parent / ".bot_start_time"
+BOT_MODE = os.getenv("BOT_MODE", "polling").lower()
 
 
 @app.get("/api/bot/status", dependencies=[auth_dep])
@@ -372,12 +374,12 @@ async def bot_status():
             uptime = f"{h}ч {m}м {s}с" if h > 0 else (f"{m}м {s}с" if m > 0 else f"{s}с")
         except Exception:
             pass
-    return {"running": True, "pid": os.getpid(), "uptime": uptime, "mode": "long_polling"}
+    return {"running": True, "pid": os.getpid(), "uptime": uptime, "mode": BOT_MODE}
 
 
 @app.post("/api/bot/start", dependencies=[auth_dep])
 async def bot_start():
-    return {"status": "already_running", "pid": os.getpid(), "mode": "long_polling"}
+    return {"status": "already_running", "pid": os.getpid(), "mode": BOT_MODE}
 
 
 @app.post("/api/bot/stop", dependencies=[auth_dep])

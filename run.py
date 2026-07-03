@@ -19,9 +19,13 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("bot")
 
 VK_TOKEN = os.getenv("VK_BOT_TOKEN")
+if not VK_TOKEN:
+    logger.error("VK_BOT_TOKEN not set in .env")
+    raise SystemExit("VK_BOT_TOKEN not set")
 VK_GROUP_ID = int(os.getenv("VK_GROUP_ID", "0"))
 CALLBACK_CONFIRMATION = os.getenv("CALLBACK_CONFIRMATION", "")
 VK_SECRET_KEY = os.getenv("VK_SECRET_KEY", "")
+BOT_MODE = os.getenv("BOT_MODE", "polling").lower()
 
 try:
     import aiohttp
@@ -57,8 +61,11 @@ async def message_handler(event):
 async def lifespan(app):
     await init_db()
     await init_menu()
-    asyncio.create_task(run_bot_polling())
-    logger.info("Bot (Long Polling) + CRM (port 8080) started")
+    if BOT_MODE == "polling":
+        asyncio.create_task(run_bot_polling())
+        logger.info("Bot (Long Polling) + CRM (port 8080) started")
+    else:
+        logger.info("Bot (Webhook mode) + CRM (port 8080) started")
     yield
 
 
@@ -86,6 +93,10 @@ async def serve_crm():
 @app.post("/callback")
 async def vk_callback(request: Request):
     data = await request.json()
+
+    if VK_SECRET_KEY and data.get("secret") != VK_SECRET_KEY:
+        logger.warning("Invalid VK secret key")
+        return PlainTextResponse("ok")
 
     if data.get("type") == "confirmation":
         logger.info("Confirmation requested")

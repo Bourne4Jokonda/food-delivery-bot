@@ -26,6 +26,15 @@ from bot.keyboards import (
 
 logger = logging.getLogger("bot")
 
+
+def extract_order_id(text: str) -> int | None:
+    try:
+        num = text.split()[-1]
+        return int(num)
+    except (ValueError, IndexError):
+        return None
+
+
 DELIVERY_ZONES = {
     "city": {
         "name": "Город Родники",
@@ -422,26 +431,32 @@ async def handle_message(event):
         elif text.startswith("-") and len(text) > 1 and not text.startswith("—"):
             await cart_remove_by_name(event, vk_id, text[1:].strip())
 
-        elif text.startswith("принять"):
-            await confirm_order(event, text)
+        elif text.startswith("принять") or text.startswith("отклонить"):
+            if user.role not in (UserRole.ADMIN, UserRole.COURIER):
+                await event.answer("Недостаточно прав для этой команды.")
+            elif text.startswith("принять"):
+                await confirm_order(event, text)
+            else:
+                await cancel_order(event, text)
 
-        elif text.startswith("начать"):
-            await start_preparing(event, text)
-
-        elif text.startswith("отклонить"):
-            await cancel_order(event, text)
-
-        elif text.startswith("готово"):
-            await ready_order(event, text)
+        elif text.startswith("начать") or text.startswith("готово"):
+            if user.role not in (UserRole.KITCHEN, UserRole.ADMIN):
+                await event.answer("Недостаточно прав для этой команды.")
+            elif text.startswith("начать"):
+                await start_preparing(event, text)
+            else:
+                await ready_order(event, text)
 
         elif text.startswith("⏱") and vk_id in pending_delivery_time:
             await set_delivery_time(event, text, vk_id)
 
-        elif text.startswith("взять"):
-            await take_delivery(event, text)
-
-        elif text.startswith("доставлен"):
-            await complete_delivery(event, text)
+        elif text.startswith("взять") or text.startswith("доставлен"):
+            if user.role not in (UserRole.COURIER, UserRole.ADMIN):
+                await event.answer("Недостаточно прав для этой команды.")
+            elif text.startswith("взять"):
+                await take_delivery(event, text)
+            else:
+                await complete_delivery(event, text)
 
         elif "заказы" in text and user.role == UserRole.ADMIN:
             await show_all_orders(event)
@@ -911,8 +926,11 @@ async def show_user_orders(event, vk_id: int):
 
 
 async def confirm_order(event, text: str):
+    order_id = extract_order_id(text)
+    if order_id is None:
+        await event.answer("Укажите номер заказа. Пример: принять 123")
+        return
     try:
-        order_id = int(text.split()[-1])
         async with async_session() as session:
             result = await session.execute(select(Order).where(Order.id == order_id))
             order = result.scalar_one_or_none()
@@ -929,8 +947,11 @@ async def confirm_order(event, text: str):
 
 
 async def cancel_order(event, text: str):
+    order_id = extract_order_id(text)
+    if order_id is None:
+        await event.answer("Укажите номер заказа. Пример: отклонить 123")
+        return
     try:
-        order_id = int(text.split()[-1])
         async with async_session() as session:
             result = await session.execute(select(Order).where(Order.id == order_id))
             order = result.scalar_one_or_none()
@@ -945,8 +966,11 @@ async def cancel_order(event, text: str):
 
 
 async def start_preparing(event, text: str):
+    order_id = extract_order_id(text)
+    if order_id is None:
+        await event.answer("Укажите номер заказа. Пример: начать 123")
+        return
     try:
-        order_id = int(text.split()[-1])
         async with async_session() as session:
             result = await session.execute(select(Order).where(Order.id == order_id))
             order = result.scalar_one_or_none()
@@ -957,12 +981,15 @@ async def start_preparing(event, text: str):
                 await notify_status_change(order_id, OrderStatus.PREPARING)
     except Exception as e:
         logger.error(f"start_preparing error: {e}", exc_info=True)
-        await event.answer("Ошибка при началеготовки")
+        await event.answer("Ошибка при начале готовки")
 
 
 async def ready_order(event, text: str):
+    order_id = extract_order_id(text)
+    if order_id is None:
+        await event.answer("Укажите номер заказа. Пример: готово 123")
+        return
     try:
-        order_id = int(text.split()[-1])
         async with async_session() as session:
             result = await session.execute(select(Order).where(Order.id == order_id))
             order = result.scalar_one_or_none()
@@ -981,8 +1008,11 @@ async def ready_order(event, text: str):
 
 
 async def take_delivery(event, text: str):
+    order_id = extract_order_id(text)
+    if order_id is None:
+        await event.answer("Укажите номер заказа. Пример: взять 123")
+        return
     try:
-        order_id = int(text.split()[-1])
         async with async_session() as session:
             result = await session.execute(select(Order).where(Order.id == order_id))
             order = result.scalar_one_or_none()
@@ -995,9 +1025,15 @@ async def take_delivery(event, text: str):
 
 
 async def set_delivery_time(event, text: str, vk_id: int):
+    order_id = pending_delivery_time.pop(vk_id, None)
+    if order_id is None:
+        return
     try:
-        order_id = pending_delivery_time.pop(vk_id)
         minutes = int(text.split()[1])
+    except (ValueError, IndexError):
+        await event.answer("Укажите время в минутах. Пример: ⏱ 30")
+        return
+    try:
         async with async_session() as session:
             result = await session.execute(select(Order).where(Order.id == order_id))
             order = result.scalar_one_or_none()
@@ -1014,8 +1050,11 @@ async def set_delivery_time(event, text: str, vk_id: int):
 
 
 async def complete_delivery(event, text: str):
+    order_id = extract_order_id(text)
+    if order_id is None:
+        await event.answer("Укажите номер заказа. Пример: доставлен 123")
+        return
     try:
-        order_id = int(text.split()[-1])
         async with async_session() as session:
             result = await session.execute(select(Order).where(Order.id == order_id))
             order = result.scalar_one_or_none()
