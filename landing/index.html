@@ -1,0 +1,897 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Вкусная Доставка — Заказывай еду в VK</title>
+    <meta name="description" content="Сервис доставки еды через VK с AI-консультантом. Заказывай за 3 минуты, доставка бесплатно от 1000₽.">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+
+        :root {
+            --bg-primary: #0D1117;
+            --bg-secondary: #161B22;
+            --bg-card: #1C2333;
+            --border: #21262D;
+            --text-primary: #F0F6FC;
+            --text-secondary: #8B949E;
+            --accent: #FF6B35;
+            --accent-hover: #FF8555;
+            --green: #3FB950;
+            --blue: #58A6FF;
+            --purple: #BC8CFF;
+        }
+
+        html { scroll-behavior: smooth; }
+
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background: var(--bg-primary);
+            color: var(--text-primary);
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        nav {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            z-index: 100;
+            background: rgba(13, 17, 23, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            padding: 16px 0;
+        }
+
+        nav .container {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .logo {
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--accent);
+            text-decoration: none;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .logo span { font-size: 24px; }
+
+        .nav-links {
+            display: flex;
+            gap: 32px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            color: var(--text-secondary);
+            text-decoration: none;
+            font-size: 14px;
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+
+        .nav-links a:hover { color: var(--text-primary); }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: all 0.2s;
+            cursor: pointer;
+            border: none;
+        }
+
+        .btn-primary {
+            background: var(--accent);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background: var(--accent-hover);
+            transform: translateY(-1px);
+        }
+
+        .btn-outline {
+            background: transparent;
+            color: var(--text-primary);
+            border: 1px solid var(--border);
+        }
+
+        .btn-outline:hover {
+            border-color: var(--text-secondary);
+            background: var(--bg-card);
+        }
+
+        .btn-large {
+            padding: 16px 32px;
+            font-size: 16px;
+        }
+
+        /* Hero */
+        .hero {
+            padding: 160px 0 100px;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 800px;
+            height: 800px;
+            background: radial-gradient(circle, rgba(255,107,53,0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            background: rgba(255,107,53,0.1);
+            border: 1px solid rgba(255,107,53,0.2);
+            border-radius: 100px;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--accent);
+            margin-bottom: 32px;
+        }
+
+        .hero h1 {
+            font-size: 64px;
+            font-weight: 800;
+            line-height: 1.1;
+            margin-bottom: 24px;
+            letter-spacing: -1px;
+        }
+
+        .hero h1 .highlight {
+            background: linear-gradient(135deg, var(--accent), #FF8555);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .hero p {
+            font-size: 20px;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto 40px;
+        }
+
+        .hero-buttons {
+            display: flex;
+            gap: 16px;
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+
+        .hero-stats {
+            display: flex;
+            justify-content: center;
+            gap: 64px;
+            margin-top: 80px;
+            padding-top: 40px;
+            border-top: 1px solid var(--border);
+        }
+
+        .stat {
+            text-align: center;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 700;
+            color: var(--accent);
+        }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-top: 4px;
+        }
+
+        /* Features */
+        .features {
+            padding: 100px 0;
+        }
+
+        .section-title {
+            text-align: center;
+            margin-bottom: 64px;
+        }
+
+        .section-title h2 {
+            font-size: 40px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .section-title p {
+            font-size: 18px;
+            color: var(--text-secondary);
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .features-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .feature-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 32px;
+            transition: all 0.3s;
+        }
+
+        .feature-card:hover {
+            border-color: var(--accent);
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(255,107,53,0.1);
+        }
+
+        .feature-icon {
+            width: 48px;
+            height: 48px;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            margin-bottom: 20px;
+        }
+
+        .feature-icon.orange { background: rgba(255,107,53,0.1); }
+        .feature-icon.green { background: rgba(63,185,80,0.1); }
+        .feature-icon.blue { background: rgba(88,166,255,0.1); }
+        .feature-icon.purple { background: rgba(188,140,255,0.1); }
+
+        .feature-card h3 {
+            font-size: 18px;
+            font-weight: 600;
+            margin-bottom: 12px;
+        }
+
+        .feature-card p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            line-height: 1.7;
+        }
+
+        /* Demo */
+        .demo {
+            padding: 100px 0;
+            background: var(--bg-secondary);
+        }
+
+        .demo-container {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 64px;
+            align-items: center;
+        }
+
+        .demo-text h2 {
+            font-size: 40px;
+            font-weight: 700;
+            margin-bottom: 24px;
+        }
+
+        .demo-text p {
+            font-size: 16px;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+            line-height: 1.8;
+        }
+
+        .demo-steps {
+            display: flex;
+            flex-direction: column;
+            gap: 24px;
+        }
+
+        .demo-step {
+            display: flex;
+            gap: 16px;
+            align-items: flex-start;
+        }
+
+        .step-number {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            background: var(--accent);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            font-weight: 700;
+            flex-shrink: 0;
+        }
+
+        .step-text h4 {
+            font-size: 16px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .step-text p {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin: 0;
+        }
+
+        .demo-phone {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 24px;
+            max-width: 360px;
+            margin: 0 auto;
+        }
+
+        .phone-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--border);
+            margin-bottom: 16px;
+        }
+
+        .phone-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background: var(--accent);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+        }
+
+        .phone-name {
+            font-size: 16px;
+            font-weight: 600;
+        }
+
+        .phone-status {
+            font-size: 12px;
+            color: var(--green);
+        }
+
+        .chat-messages {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .chat-msg {
+            padding: 12px 16px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.5;
+            max-width: 85%;
+        }
+
+        .chat-msg.bot {
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            align-self: flex-start;
+            border-bottom-left-radius: 4px;
+        }
+
+        .chat-msg.user {
+            background: var(--accent);
+            color: white;
+            align-self: flex-end;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-buttons {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 8px;
+        }
+
+        .chat-btn {
+            padding: 8px 16px;
+            background: var(--bg-primary);
+            border: 1px solid var(--border);
+            border-radius: 20px;
+            font-size: 13px;
+            color: var(--text-primary);
+        }
+
+        /* Pricing */
+        .pricing {
+            padding: 100px 0;
+        }
+
+        .pricing-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 24px;
+        }
+
+        .price-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 16px;
+            padding: 40px 32px;
+            text-align: center;
+            transition: all 0.3s;
+            position: relative;
+        }
+
+        .price-card.popular {
+            border-color: var(--accent);
+            transform: scale(1.05);
+        }
+
+        .price-card.popular::before {
+            content: 'Популярный';
+            position: absolute;
+            top: -12px;
+            left: 50%;
+            transform: translateX(-50%);
+            padding: 4px 16px;
+            background: var(--accent);
+            color: white;
+            font-size: 12px;
+            font-weight: 600;
+            border-radius: 100px;
+        }
+
+        .price-card h3 {
+            font-size: 20px;
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .price-card .price {
+            font-size: 48px;
+            font-weight: 800;
+            margin: 16px 0;
+        }
+
+        .price-card .price span {
+            font-size: 16px;
+            font-weight: 400;
+            color: var(--text-secondary);
+        }
+
+        .price-card .period {
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 24px;
+        }
+
+        .price-features {
+            list-style: none;
+            text-align: left;
+            margin-bottom: 32px;
+        }
+
+        .price-features li {
+            padding: 8px 0;
+            font-size: 14px;
+            color: var(--text-secondary);
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .price-features li::before {
+            content: '✓';
+            color: var(--green);
+            font-weight: 700;
+        }
+
+        /* Tech */
+        .tech {
+            padding: 100px 0;
+            background: var(--bg-secondary);
+        }
+
+        .tech-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 24px;
+        }
+
+        .tech-card {
+            background: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 24px;
+            text-align: center;
+        }
+
+        .tech-card .icon {
+            font-size: 32px;
+            margin-bottom: 12px;
+        }
+
+        .tech-card h4 {
+            font-size: 14px;
+            font-weight: 600;
+            margin-bottom: 4px;
+        }
+
+        .tech-card p {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* CTA */
+        .cta {
+            padding: 100px 0;
+            text-align: center;
+        }
+
+        .cta-box {
+            background: linear-gradient(135deg, var(--bg-card), var(--bg-secondary));
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            padding: 64px;
+        }
+
+        .cta-box h2 {
+            font-size: 40px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .cta-box p {
+            font-size: 18px;
+            color: var(--text-secondary);
+            margin-bottom: 32px;
+        }
+
+        /* Footer */
+        footer {
+            padding: 40px 0;
+            border-top: 1px solid var(--border);
+            text-align: center;
+        }
+
+        footer p {
+            font-size: 14px;
+            color: var(--text-secondary);
+        }
+
+        footer a {
+            color: var(--accent);
+            text-decoration: none;
+        }
+
+        /* Responsive */
+        @media (max-width: 768px) {
+            .hero h1 { font-size: 36px; }
+            .hero p { font-size: 16px; }
+            .hero-stats { flex-direction: column; gap: 32px; }
+            .features-grid { grid-template-columns: 1fr; }
+            .demo-container { grid-template-columns: 1fr; }
+            .demo-text { order: 2; }
+            .demo-phone { order: 1; }
+            .pricing-grid { grid-template-columns: 1fr; }
+            .price-card.popular { transform: none; }
+            .tech-grid { grid-template-columns: repeat(2, 1fr); }
+            .nav-links { display: none; }
+            .cta-box { padding: 40px 24px; }
+            .cta-box h2 { font-size: 28px; }
+        }
+    </style>
+</head>
+<body>
+
+<nav>
+    <div class="container">
+        <a href="#" class="logo"><span>🍕</span> Вкусная Доставка</a>
+        <ul class="nav-links">
+            <li><a href="#features">Возможности</a></li>
+            <li><a href="#demo">Демо</a></li>
+            <li><a href="#pricing">Стоимость</a></li>
+            <li><a href="#tech">Технологии</a></li>
+        </ul>
+        <a href="#contact" class="btn btn-primary">Связаться</a>
+    </div>
+</nav>
+
+<section class="hero">
+    <div class="container">
+        <div class="hero-badge">🤖 AI-консультант включён</div>
+        <h1>Заказывай еду<br>в <span class="highlight">VK</span> за 3 минуты</h1>
+        <p>Бот для заказа еды с AI-помощником. Пользователь выбирает блюда, оформляет заказ — а кухня и курьер получают уведомления автоматически.</p>
+        <div class="hero-buttons">
+            <a href="#contact" class="btn btn-primary btn-large">Начать бесплатно</a>
+            <a href="#demo" class="btn btn-outline btn-large">Посмотреть демо</a>
+        </div>
+        <div class="hero-stats">
+            <div class="stat">
+                <div class="stat-value">3 мин</div>
+                <div class="stat-label">Оформление заказа</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">0₽</div>
+                <div class="stat-label">Стоимость запуска</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">1 день</div>
+                <div class="stat-label">До запуска</div>
+            </div>
+            <div class="stat">
+                <div class="stat-value">24/7</div>
+                <div class="stat-label">Работает без выходных</div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="features" id="features">
+    <div class="container">
+        <div class="section-title">
+            <h2>Всё для вашего бизнеса</h2>
+            <p>Полный цикл: от заказа клиента до доставки курьером</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon orange">🤖</div>
+                <h3>AI-консультант</h3>
+                <p>YandexGPT помогает выбирать блюда, отвечает на вопросы о меню, рассчитывает стоимость заказа.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon green">📱</div>
+                <h3>Бот в VK</h3>
+                <p>Пользователь заказывает еду прямо в мессенджере. Не нужно скачивать приложение или открывать сайт.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon blue">🛒</div>
+                <h3>Корзина и оформление</h3>
+                <p>Добавление блюд, выбор доставки или самовывоза, оплата — всё за 3 шага.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon purple">📊</div>
+                <h3>CRM-панель</h3>
+                <p>Администратор управляет заказами, меню, сотрудниками и статистикой в браузере.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon green">🔔</div>
+                <h3>Автоматические уведомления</h3>
+                <p>Кухня получает заказ, курьер — адрес, клиент — статус. Без участия администратора.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon orange">🚚</div>
+                <h3>Зоны доставки</h3>
+                <p>Настройте зоны, стоимость и бесплатную доставку от суммы. Гибкие тарифы.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="demo" id="demo">
+    <div class="container">
+        <div class="demo-container">
+            <div class="demo-text">
+                <h2>Как это работает</h2>
+                <p>Клиент общается с ботом в VK, выбирает блюда и оформляет заказ. Администратор видит всё в CRM-панели.</p>
+                <div class="demo-steps">
+                    <div class="demo-step">
+                        <div class="step-number">1</div>
+                        <div class="step-text">
+                            <h4>Клиент пишет боту</h4>
+                            <p>Приветствие → просмотр меню → выбор блюд</p>
+                        </div>
+                    </div>
+                    <div class="demo-step">
+                        <div class="step-number">2</div>
+                        <div class="step-text">
+                            <h4>AI помогает выбрать</h4>
+                            <p>Рекомендации, ответы на вопросы, расчёт стоимости</p>
+                        </div>
+                    </div>
+                    <div class="demo-step">
+                        <div class="step-number">3</div>
+                        <div class="step-text">
+                            <h4>Оформление заказа</h4>
+                            <p>Адрес → способ оплаты → подтверждение</p>
+                        </div>
+                    </div>
+                    <div class="demo-step">
+                        <div class="step-number">4</div>
+                        <div class="step-text">
+                            <h4>Кухня и курьер</h4>
+                            <p>Автоматические уведомления по ролям</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="demo-phone">
+                <div class="phone-header">
+                    <div class="phone-avatar">🍕</div>
+                    <div>
+                        <div class="phone-name">Вкусная Доставка</div>
+                        <div class="phone-status">● онлайн</div>
+                    </div>
+                </div>
+                <div class="chat-messages">
+                    <div class="chat-msg user">Привет!</div>
+                    <div class="chat-msg bot">
+                        Добро пожаловать! Я ваш помощник. Чем могу помочь?
+                        <div class="chat-buttons">
+                            <span class="chat-btn">🍕 Пицца</span>
+                            <span class="chat-btn">🍜 Рамен</span>
+                            <span class="chat-btn">🥗 Салаты</span>
+                        </div>
+                    </div>
+                    <div class="chat-msg user">Пицца Маргарита</div>
+                    <div class="chat-msg bot">Добавлено: Пицца Маргарита x1 — 450₽</div>
+                    <div class="chat-msg user">Оформить заказ</div>
+                    <div class="chat-msg bot">
+                        Как хотите получить заказ?
+                        <div class="chat-buttons">
+                            <span class="chat-btn">🚗 Доставка</span>
+                            <span class="chat-btn">🚶 Самовывоз</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="pricing" id="pricing">
+    <div class="container">
+        <div class="section-title">
+            <h2>Стоимость</h2>
+            <p>Запустите доставку за минимальные вложения</p>
+        </div>
+        <div class="pricing-grid">
+            <div class="price-card">
+                <h3>Базовый</h3>
+                <div class="price">0₽</div>
+                <div class="period">бесплатно навсегда</div>
+                <ul class="price-features">
+                    <li>VK-бот для заказов</li>
+                    <li>AI-консультант</li>
+                    <li>CRM-панель</li>
+                    <li>Деплой на телефоне</li>
+                    <li>Общая поддержка</li>
+                </ul>
+                <a href="#contact" class="btn btn-outline" style="width:100%">Начать</a>
+            </div>
+            <div class="price-card popular">
+                <h3>Профессиональный</h3>
+                <div class="price">15 000₽</div>
+                <div class="period">разовый платёж</div>
+                <ul class="price-features">
+                    <li>Всё из «Базовый»</li>
+                    <li>Кастомизация дизайна</li>
+                    <li>Настройка зон доставки</li>
+                    <li>Деплой на VPS</li>
+                    <li>Обучение перссонала</li>
+                    <li>Поддержка 1 месяц</li>
+                </ul>
+                <a href="#contact" class="btn btn-primary" style="width:100%">Заказать</a>
+            </div>
+            <div class="price-card">
+                <h3>Поддержка</h3>
+                <div class="price">5 000₽<span>/мес</span></div>
+                <div class="period">ежемесячно</div>
+                <ul class="price-features">
+                    <li>Мониторинг 24/7</li>
+                    <li>Обновления и фиксы</li>
+                    <li>Консультации</li>
+                    <li>Приоритетная поддержка</li>
+                    <li>Расширение функционала</li>
+                </ul>
+                <a href="#contact" class="btn btn-outline" style="width:100%">Подключить</a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="tech" id="tech">
+    <div class="container">
+        <div class="section-title">
+            <h2>Технологии</h2>
+            <p>Современный стек для быстрой и стабильной работы</p>
+        </div>
+        <div class="tech-grid">
+            <div class="tech-card">
+                <div class="icon">🐍</div>
+                <h4>Python 3.11</h4>
+                <p>Быстрый и надёжный</p>
+            </div>
+            <div class="tech-card">
+                <div class="icon">⚡</div>
+                <h4>FastAPI</h4>
+                <p>Асинхронный API</p>
+            </div>
+            <div class="tech-card">
+                <div class="icon">💬</div>
+                <h4>VK Bot API</h4>
+                <p>100 млн пользователей</p>
+            </div>
+            <div class="tech-card">
+                <div class="icon">🤖</div>
+                <h4>YandexGPT</h4>
+                <p>AI-консультант</p>
+            </div>
+            <div class="tech-card">
+                <div class="icon">🗄️</div>
+                <h4>SQLite</h4>
+                <p>Легковесная БД</p>
+            </div>
+            <div class="tech-card">
+                <div class="icon">⚛️</div>
+                <h4>React</h4>
+                <p>CRM-интерфейс</p>
+            </div>
+            <div class="tech-card">
+                <div class="icon">🔒</div>
+                <h4>Безопасность</h4>
+                <p>Роли, CORS, валидация</p>
+            </div>
+            <div class="tech-card">
+                <div class="icon">🧪</div>
+                <h4>Тесты</h4>
+                <p>34 автотеста</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+<section class="cta" id="contact">
+    <div class="container">
+        <div class="cta-box">
+            <h2>Готовы запустить доставку?</h2>
+            <p>Начните принимать заказы через VK уже сегодня. Настройка занимает 1 день.</p>
+            <div style="display:flex; gap:16px; justify-content:center; flex-wrap:wrap;">
+                <a href="https://github.com/Bourne4Jokonda/food-delivery-bot" class="btn btn-primary btn-large" target="_blank">
+                    GitHub →
+                </a>
+                <a href="https://vk.com" class="btn btn-outline btn-large" target="_blank">
+                    Написать в VK
+                </a>
+            </div>
+        </div>
+    </div>
+</section>
+
+<footer>
+    <div class="container">
+        <p>🍕 Вкусная Доставка © 2025 · <a href="https://github.com/Bourne4Jokonda/food-delivery-bot">GitHub</a></p>
+    </div>
+</footer>
+
+</body>
+</html>
