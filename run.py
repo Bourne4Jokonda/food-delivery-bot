@@ -47,13 +47,19 @@ from bot.handlers import handle_message, handle_callback
 @bot.on.message(text="/start")
 async def start_handler(event):
     logger.info(f"/start from {event.from_id} peer={event.peer_id}")
-    await handle_message(event)
+    try:
+        await handle_message(event)
+    except Exception as e:
+        logger.error(f"start_handler error: {e}", exc_info=True)
 
 
 @bot.on.message()
 async def message_handler(event):
     logger.info(f"msg from {event.from_id} peer={event.peer_id}: {event.text}")
-    await handle_message(event)
+    try:
+        await handle_message(event)
+    except Exception as e:
+        logger.error(f"message_handler error: {e}", exc_info=True)
 
 
 @bot.on.raw_event(GroupEventType.MESSAGE_EVENT)

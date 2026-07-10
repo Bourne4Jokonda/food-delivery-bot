@@ -743,26 +743,30 @@ async def cart_remove_by_name(event, vk_id: int, text: str):
 
 
 async def show_cart(event, vk_id: int, session: AsyncSession = None):
-    cart = await get_cart(vk_id, session)
-    if not cart:
-        await event.answer("Корзина пуста", keyboard=get_main_menu_keyboard())
-        return
+    try:
+        cart = await get_cart(vk_id, session)
+        if not cart:
+            await event.answer("Корзина пуста", keyboard=get_main_menu_keyboard())
+            return
 
-    total = 0
-    items_info = []
-    async with async_session() as s:
-        for item in cart:
-            result = await s.execute(select(MenuItem).where(MenuItem.id == item["id"]))
-            menu_item = result.scalar_one()
-            subtotal = menu_item.price * item["quantity"]
-            total += subtotal
-            items_info.append((menu_item, item["quantity"], subtotal))
+        total = 0
+        items_info = []
+        async with async_session() as s:
+            for item in cart:
+                result = await s.execute(select(MenuItem).where(MenuItem.id == item["id"]))
+                menu_item = result.scalar_one()
+                subtotal = menu_item.price * item["quantity"]
+                total += subtotal
+                items_info.append((menu_item, item["quantity"], subtotal))
 
-    for menu_item, qty, subtotal in items_info:
-        msg = f"{'➖' if qty > 1 else '🗑'} {menu_item.name} x{qty} — {subtotal}₽"
-        await event.answer(msg, keyboard=get_cart_item_keyboard(menu_item.id, qty))
+        for menu_item, qty, subtotal in items_info:
+            msg = f"{'➖' if qty > 1 else '🗑'} {menu_item.name} x{qty} — {subtotal}₽"
+            await event.answer(msg, keyboard=get_cart_item_keyboard(menu_item.id, qty))
 
-    await event.answer(f"Итого: {total}₽\n\nОформить заказ?", keyboard=get_cart_keyboard())
+        await event.answer(f"Итого: {total}₽\n\nОформить заказ?", keyboard=get_cart_keyboard())
+    except Exception as e:
+        logger.error(f"show_cart error: {e}", exc_info=True)
+        await event.answer("Ошибка загрузки корзины", keyboard=get_main_menu_keyboard())
 
 
 async def handle_ai_chat(event, vk_id: int, text: str):
