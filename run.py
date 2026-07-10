@@ -9,6 +9,7 @@ from fastapi.responses import PlainTextResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
 from vkbottle import Bot, GroupEventType
+from vkbottle.polling import BotPolling
 from database.db import init_db, engine, Base
 from init_menu import init_menu
 from contextlib import asynccontextmanager
@@ -71,6 +72,16 @@ async def message_event_handler(event):
         logger.error(f"message_event error: {e}", exc_info=True)
 
 
+async def run_bot_polling():
+    polling = BotPolling(bot.api)
+    try:
+        logger.info("Starting bot Long Polling...")
+        async for event in polling.listen():
+            await bot.process_event(event)
+    except Exception as e:
+        logger.error(f"Bot polling error: {e}", exc_info=True)
+
+
 @asynccontextmanager
 async def lifespan(app):
     await init_db()
@@ -78,19 +89,13 @@ async def lifespan(app):
     from bot.handlers import load_pending_orders
     await load_pending_orders()
     if BOT_MODE == "polling":
-        asyncio.create_task(run_bot_polling())
+        task = asyncio.create_task(run_bot_polling())
         logger.info("Bot (Long Polling) + CRM (port 8080) started")
     else:
         logger.info("Bot (Webhook mode) + CRM (port 8080) started")
     yield
-
-
-async def run_bot_polling():
-    try:
-        logger.info("Starting bot Long Polling...")
-        await bot.run_polling()
-    except Exception as e:
-        logger.error(f"Bot polling error: {e}", exc_info=True)
+    if BOT_MODE == "polling":
+        task.cancel()
 
 
 app = FastAPI(lifespan=lifespan)
