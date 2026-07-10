@@ -592,14 +592,14 @@ async def add_to_cart_by_name(event, vk_id: int, text: str):
 
         found_items = []
         text_clean = _re.sub(r'\b(\d+)\s*(шт|штуки|штука|порц|порции|порция)\b', r'\1', text, flags=_re.IGNORECASE)
-        parts = _re.split(r'\s*[,\sи]\s*(?=\S)', text_clean)
+        parts = _re.split(r'\s*,\s*|\s+и\s+', text_clean)
         for part in parts:
             part = part.strip()
-            if not part or part in ('и', 'а', 'но', 'или'):
+            if not part:
                 continue
-            qty_match = _re.search(r'(\d+)', part)
+            qty_match = _re.search(r'(\d+)\s*$', part)
             qty = int(qty_match.group(1)) if qty_match else 1
-            phrase = _re.sub(r'\d+', '', part).strip()
+            phrase = part[:qty_match.start()].strip() if qty_match else part
 
             phrase = phrase.lower()
             if len(phrase) < 2:
