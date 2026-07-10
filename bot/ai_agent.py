@@ -1,9 +1,12 @@
 import httpx
 import json
 import os
+import logging
 from sqlalchemy import select
 from database.db import async_session
 from database.models import MenuItem
+
+logger = logging.getLogger("bot")
 
 YANDEX_GPT_API_KEY = os.getenv("YANDEX_GPT_API_KEY")
 YANDEX_GPT_FOLDER_ID = os.getenv("YANDEX_GPT_FOLDER_ID")
@@ -86,7 +89,8 @@ async def chat_with_ai(messages: list[dict]) -> str:
             data = response.json()
             return data["result"]["alternatives"][0]["message"]["text"]
     except Exception as e:
-        return f"Ошибка ИИ: {str(e)}. Попробуйте написать 'заказ'."
+        logger.error(f"YandexGPT error: {e}")
+        return "ИИ-сервис временно недоступен. Напишите 'заказ' чтобы сделать заказ вручную."
 
 
 def parse_order_from_ai_response(text: str) -> dict | None:

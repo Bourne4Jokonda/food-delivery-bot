@@ -124,3 +124,23 @@ class Category(Base):
     name = Column(String, nullable=False, unique=True)
     icon = Column(String, default="fa-utensils")
     sort_order = Column(Integer, default=0)
+
+
+class PendingOrderState(Base):
+    __tablename__ = "pending_order_states"
+
+    id = Column(Integer, primary_key=True)
+    vk_id = Column(Integer, unique=True, nullable=False, index=True)
+    state_json = Column(String, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+
+class StaffApiKey(Base):
+    __tablename__ = "staff_api_keys"
+
+    id = Column(Integer, primary_key=True)
+    key_hash = Column(String, nullable=False, unique=True, index=True)
+    name = Column(String, nullable=False)
+    role = Column(String, nullable=False)
+    revoked = Column(Integer, default=0)
+    created_at = Column(DateTime, default=datetime.utcnow)

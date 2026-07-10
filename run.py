@@ -8,7 +8,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import PlainTextResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 from pathlib import Path
-from vkbottle import Bot
+from vkbottle import Bot, GroupEventType
 from database.db import init_db, engine, Base
 from init_menu import init_menu
 from contextlib import asynccontextmanager
@@ -29,9 +29,8 @@ BOT_MODE = os.getenv("BOT_MODE", "polling").lower()
 
 try:
     import aiohttp
-    ssl_ctx = ssl.create_default_context()
-    ssl_ctx.check_hostname = False
-    ssl_ctx.verify_mode = ssl.CERT_NONE
+    import certifi
+    ssl_ctx = ssl.create_default_context(cafile=certifi.where())
     _orig = aiohttp.TCPConnector.__init__
     def _patched(self, *a, **kw):
         kw.setdefault("ssl", ssl_ctx)
@@ -42,7 +41,7 @@ except Exception:
 
 bot = Bot(token=VK_TOKEN)
 
-from bot.handlers import handle_message
+from bot.handlers import handle_message, handle_callback
 
 
 @bot.on.message(text="/start")
@@ -57,10 +56,21 @@ async def message_handler(event):
     await handle_message(event)
 
 
+@bot.on.raw_event(GroupEventType.MESSAGE_EVENT)
+async def message_event_handler(event):
+    logger.info(f"message_event: {event.object}")
+    try:
+        await handle_callback(event)
+    except Exception as e:
+        logger.error(f"message_event error: {e}", exc_info=True)
+
+
 @asynccontextmanager
 async def lifespan(app):
     await init_db()
     await init_menu()
+    from bot.handlers import load_pending_orders
+    await load_pending_orders()
     if BOT_MODE == "polling":
         asyncio.create_task(run_bot_polling())
         logger.info("Bot (Long Polling) + CRM (port 8080) started")

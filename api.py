@@ -7,21 +7,55 @@ from pydantic import BaseModel
 from datetime import datetime, timedelta
 from pathlib import Path
 from contextlib import asynccontextmanager
-import os, httpx, time
+import os, httpx, time, hmac
 from database.db import engine, async_session, init_db
-from database.models import Base, Order, OrderItem, MenuItem, OrderStatus, User, UserRole, DeliveryZone, Category
+from database.models import Base, Order, OrderItem, MenuItem, OrderStatus, User, UserRole, DeliveryZone, Category, StaffApiKey
 
 
 CRM_API_KEY = os.getenv("CRM_API_KEY", "")
 CRM_ALLOWED_ORIGINS = [o.strip() for o in os.getenv("CRM_ALLOWED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080").split(",") if o.strip()]
 
+# Rate limiting for auth endpoint
+auth_attempts = {}
+AUTH_RATE_LIMIT_MAX = 10
+AUTH_RATE_LIMIT_WINDOW = 60  # seconds
+
+
+def check_auth_rate_limit(ip: str) -> bool:
+    now = time.time()
+    if ip not in auth_attempts:
+        auth_attempts[ip] = []
+    auth_attempts[ip] = [ts for ts in auth_attempts[ip] if now - ts < AUTH_RATE_LIMIT_WINDOW]
+    if len(auth_attempts[ip]) >= AUTH_RATE_LIMIT_MAX:
+        return False
+    auth_attempts[ip].append(now)
+    return True
+
 
 async def verify_api_key(request: Request):
+    key = request.headers.get("X-API-Key", "")
+
+    # If no CRM_API_KEY configured, allow access (backward compatibility)
     if not CRM_API_KEY:
         return
-    key = request.headers.get("X-API-Key", "")
-    if key != CRM_API_KEY:
-        raise HTTPException(status_code=401, detail="Invalid or missing API key")
+
+    # Check main CRM key first
+    if key and hmac.compare_digest(key, CRM_API_KEY):
+        return
+
+    # Check staff API keys from database
+    if key:
+        import hashlib
+        key_hash = hashlib.sha256(key.encode()).hexdigest()
+        async with async_session() as session:
+            result = await session.execute(
+                select(StaffApiKey).where(StaffApiKey.key_hash == key_hash, StaffApiKey.revoked == 0)
+            )
+            staff_key = result.scalar_one_or_none()
+            if staff_key:
+                return
+
+    raise HTTPException(status_code=401, detail="Invalid or missing API key")
 
 
 auth_dep = Depends(verify_api_key)
@@ -82,10 +116,13 @@ class AuthCheck(BaseModel):
 
 
 @app.post("/api/auth/verify")
-async def verify_auth(body: AuthCheck):
+async def verify_auth(request: Request, body: AuthCheck):
     if not CRM_API_KEY:
         return {"status": "no_key_configured"}
-    if body.key == CRM_API_KEY:
+    client_ip = request.client.host if request.client else "unknown"
+    if not check_auth_rate_limit(client_ip):
+        raise HTTPException(status_code=429, detail="Too many attempts. Try again later.")
+    if hmac.compare_digest(body.key, CRM_API_KEY):
         return {"status": "ok"}
     raise HTTPException(status_code=401, detail="Invalid API key")
 
@@ -363,6 +400,11 @@ BOT_START_TIME_FILE = Path(__file__).parent / ".bot_start_time"
 BOT_MODE = os.getenv("BOT_MODE", "polling").lower()
 
 
+@app.get("/health")
+async def health_check():
+    return {"status": "ok"}
+
+
 @app.get("/api/bot/status", dependencies=[auth_dep])
 async def bot_status():
     uptime = None
@@ -525,3 +567,45 @@ async def bot_logs(lines: int = 50):
         all_lines = content.strip().splitlines()
         return {"lines": all_lines[-lines:]}
     return {"lines": []}
+
+
+class StaffApiKeyCreate(BaseModel):
+    name: str
+    role: str
+
+
+@app.post("/api/staff-keys", dependencies=[auth_dep])
+async def create_staff_key(body: StaffApiKeyCreate):
+    import hashlib
+    import secrets
+    raw_key = secrets.token_urlsafe(32)
+    key_hash = hashlib.sha256(raw_key.encode()).hexdigest()
+    async with async_session() as session:
+        staff_key = StaffApiKey(
+            key_hash=key_hash,
+            name=body.name,
+            role=body.role
+        )
+        session.add(staff_key)
+        await session.commit()
+    return {"key": raw_key, "name": body.name, "role": body.role, "message": "Save this key - it won't be shown again"}
+
+
+@app.get("/api/staff-keys", dependencies=[auth_dep])
+async def list_staff_keys():
+    async with async_session() as session:
+        result = await session.execute(select(StaffApiKey))
+        keys = result.scalars().all()
+        return [{"id": k.id, "name": k.name, "role": k.role, "revoked": k.revoked, "created_at": k.created_at.isoformat()} for k in keys]
+
+
+@app.delete("/api/staff-keys/{key_id}", dependencies=[auth_dep])
+async def revoke_staff_key(key_id: int):
+    async with async_session() as session:
+        result = await session.execute(select(StaffApiKey).where(StaffApiKey.id == key_id))
+        key = result.scalar_one_or_none()
+        if not key:
+            raise HTTPException(status_code=404, detail="Key not found")
+        key.revoked = 1
+        await session.commit()
+        return {"status": "revoked"}

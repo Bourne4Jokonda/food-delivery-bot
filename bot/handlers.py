@@ -5,7 +5,7 @@ from vkbottle import BaseStateGroup
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 from database.db import async_session, get_conversation, add_conversation_message
-from database.models import User, Order, OrderItem, MenuItem, OrderStatus, UserRole, Cart, DeliveryZone
+from database.models import User, Order, OrderItem, MenuItem, OrderStatus, UserRole, Cart, DeliveryZone, PendingOrderState
 from bot.ai_agent import chat_with_ai, parse_order_from_ai_response
 
 KEY_STATUSES = {OrderStatus.READY, OrderStatus.DELIVERING, OrderStatus.DELIVERED, OrderStatus.CANCELLED}
@@ -68,6 +68,71 @@ pending_orders = {}
 pending_notify = {}
 pending_delivery_time = {}
 ADMIN_VK_ID = 552266758
+
+# Rate limiting: {vk_id: [timestamp1, timestamp2, ...]}
+user_message_timestamps = {}
+RATE_LIMIT_MAX_MESSAGES = 5
+RATE_LIMIT_WINDOW_SECONDS = 10
+
+
+def is_rate_limited(vk_id: int) -> bool:
+    import time
+    now = time.time()
+    if vk_id not in user_message_timestamps:
+        user_message_timestamps[vk_id] = []
+    user_message_timestamps[vk_id] = [
+        ts for ts in user_message_timestamps[vk_id]
+        if now - ts < RATE_LIMIT_WINDOW_SECONDS
+    ]
+    if len(user_message_timestamps[vk_id]) >= RATE_LIMIT_MAX_MESSAGES:
+        return True
+    user_message_timestamps[vk_id].append(now)
+    return False
+
+
+async def load_pending_orders():
+    try:
+        async with async_session() as session:
+            result = await session.execute(select(PendingOrderState))
+            states = result.scalars().all()
+            for state in states:
+                import json
+                pending_orders[state.vk_id] = json.loads(state.state_json)
+            logger.info(f"Loaded {len(states)} pending orders from DB")
+    except Exception as e:
+        logger.error(f"Failed to load pending orders: {e}")
+
+
+async def save_pending_order(vk_id: int):
+    try:
+        import json
+        async with async_session() as session:
+            state_json = json.dumps(pending_orders.get(vk_id, {}))
+            result = await session.execute(
+                select(PendingOrderState).where(PendingOrderState.vk_id == vk_id)
+            )
+            existing = result.scalar_one_or_none()
+            if existing:
+                existing.state_json = state_json
+            else:
+                session.add(PendingOrderState(vk_id=vk_id, state_json=state_json))
+            await session.commit()
+    except Exception as e:
+        logger.error(f"Failed to save pending order for {vk_id}: {e}")
+
+
+async def delete_pending_order(vk_id: int):
+    try:
+        async with async_session() as session:
+            result = await session.execute(
+                select(PendingOrderState).where(PendingOrderState.vk_id == vk_id)
+            )
+            existing = result.scalar_one_or_none()
+            if existing:
+                await session.delete(existing)
+                await session.commit()
+    except Exception as e:
+        logger.error(f"Failed to delete pending order for {vk_id}: {e}")
 VK_BOT_TOKEN = os.getenv("VK_BOT_TOKEN")
 ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID", "0")) or None
 KITCHEN_CHAT_ID = int(os.getenv("KITCHEN_CHAT_ID", "0")) or None
@@ -165,31 +230,45 @@ async def notify_status_change(order_id: int, new_status: OrderStatus):
         await send_vk_message(user.vk_id, f"📦 Заказ #{order_id}: {status_text}")
 
 
-async def notify_staff_by_role(role: UserRole, message: str, order_id: int = None):
+async def notify_staff_by_role(role: UserRole, message: str, order_id: int = None, chat_id: int = None):
     try:
-        async with async_session() as session:
-            result = await session.execute(select(User).where(User.role == role))
-            users = result.scalars().all()
-            for user in users:
-                keyboard = None
-                if order_id:
-                    if role == UserRole.ADMIN:
-                        keyboard = get_order_action_keyboard(order_id)
-                    elif role == UserRole.KITCHEN:
-                        keyboard = get_kitchen_keyboard(order_id)
-                    elif role == UserRole.COURIER:
-                        keyboard = get_courier_keyboard(order_id)
-                await send_vk_message(user.vk_id, message, keyboard=keyboard)
+        keyboard = None
+        if order_id:
+            if role == UserRole.ADMIN:
+                keyboard = get_order_action_keyboard(order_id)
+            elif role == UserRole.KITCHEN:
+                keyboard = get_kitchen_keyboard(order_id)
+            elif role == UserRole.COURIER:
+                keyboard = get_courier_keyboard(order_id)
+
+        if chat_id:
+            await send_vk_message(0, message, chat_id=chat_id, keyboard=keyboard)
+        else:
+            async with async_session() as session:
+                result = await session.execute(select(User).where(User.role == role))
+                users = result.scalars().all()
+                for user in users:
+                    await send_vk_message(user.vk_id, message, keyboard=keyboard)
     except Exception as e:
         logger.error(f"notify_staff error: {e}")
 
 
 async def notify_kitchen(order_id: int, order_details: str):
-    await notify_staff_by_role(UserRole.KITCHEN, f"👨‍🍳 Новый заказ на кухне #{order_id}!\n\n{order_details}", order_id=order_id)
+    await notify_staff_by_role(
+        UserRole.KITCHEN,
+        f"👨‍🍳 Новый заказ на кухне #{order_id}!\n\n{order_details}",
+        order_id=order_id,
+        chat_id=KITCHEN_CHAT_ID
+    )
 
 
 async def notify_courier(order_id: int, order_details: str):
-    await notify_staff_by_role(UserRole.COURIER, f"🚗 Заказ #{order_id} готов к доставке!\n\n{order_details}", order_id=order_id)
+    await notify_staff_by_role(
+        UserRole.COURIER,
+        f"🚗 Заказ #{order_id} готов к доставке!\n\n{order_details}",
+        order_id=order_id,
+        chat_id=COURIER_CHAT_ID
+    )
 
 
 async def notify_delivery_time(order_id: int, minutes: int):
@@ -277,6 +356,10 @@ async def handle_message(event):
     text = strip_buttons(raw)
     vk_id = event.from_id
 
+    if is_rate_limited(vk_id):
+        await event.answer("Не так быстро, подождите немного.")
+        return
+
     async with async_session() as session:
         user = await get_or_create_user(vk_id, session)
 
@@ -286,6 +369,7 @@ async def handle_message(event):
 
         if is_greeting:
             pending_orders.pop(vk_id, None)
+            await delete_pending_order(vk_id)
             await event.answer(
                 "Добро пожаловать в 'Вкусная Доставка'!\n\nЯ ваш персональный помощник. Чем могу помочь?",
                 keyboard=get_main_menu_keyboard()
@@ -409,6 +493,7 @@ async def handle_message(event):
             user.phone = phone
             await session.commit()
             del pending_orders[vk_id]["awaiting_phone"]
+            await save_pending_order(vk_id)
             await event.answer("Как будете оплачивать?", keyboard=get_payment_keyboard())
 
         elif vk_id in pending_orders and pending_orders[vk_id].get("delivery_type") and "payment" not in pending_orders[vk_id]:
@@ -432,17 +517,13 @@ async def handle_message(event):
             await cart_remove_by_name(event, vk_id, text[1:].strip())
 
         elif text.startswith("принять") or text.startswith("отклонить"):
-            if user.role not in (UserRole.ADMIN, UserRole.COURIER):
-                await event.answer("Недостаточно прав для этой команды.")
-            elif text.startswith("принять"):
+            if text.startswith("принять"):
                 await confirm_order(event, text)
             else:
                 await cancel_order(event, text)
 
         elif text.startswith("начать") or text.startswith("готово"):
-            if user.role not in (UserRole.KITCHEN, UserRole.ADMIN):
-                await event.answer("Недостаточно прав для этой команды.")
-            elif text.startswith("начать"):
+            if text.startswith("начать"):
                 await start_preparing(event, text)
             else:
                 await ready_order(event, text)
@@ -451,9 +532,7 @@ async def handle_message(event):
             await set_delivery_time(event, text, vk_id)
 
         elif text.startswith("взять") or text.startswith("доставлен"):
-            if user.role not in (UserRole.COURIER, UserRole.ADMIN):
-                await event.answer("Недостаточно прав для этой команды.")
-            elif text.startswith("взять"):
+            if text.startswith("взять"):
                 await take_delivery(event, text)
             else:
                 await complete_delivery(event, text)
@@ -534,7 +613,7 @@ async def add_to_cart_by_name(event, vk_id: int, text: str):
                         best_item = item
                         best_score = word_score
 
-            if best_item and best_score >= 0.3:
+            if best_item and best_score >= 0.2:
                 if any(fi.id == best_item.id for fi in found_items):
                     for fi in found_items:
                         if fi.id == best_item.id:
@@ -766,6 +845,7 @@ async def start_order(event, vk_id: int):
         return
 
     pending_orders[vk_id] = {}
+    await save_pending_order(vk_id)
     await event.answer("Как хотите получить заказ?", keyboard=get_delivery_keyboard())
 
 
@@ -777,9 +857,11 @@ async def handle_delivery_choice(event, vk_id: int, text: str):
 
     if "доставка" in text:
         pending_orders[vk_id] = {"delivery_type": "delivery"}
+        await save_pending_order(vk_id)
         await event.answer("Укажите адрес доставки:")
     elif "самовывоз" in text:
         pending_orders[vk_id] = {"delivery_type": "pickup"}
+        await save_pending_order(vk_id)
         async with async_session() as session:
             user = await get_or_create_user(vk_id, session)
             if user.phone:
@@ -848,6 +930,7 @@ async def process_order(event, vk_id: int, session: AsyncSession):
     await session.commit()
     await clear_cart(vk_id, session)
     del pending_orders[vk_id]
+    await delete_pending_order(vk_id)
 
     delivery_text = "🚗 Доставка" if delivery_type == "delivery" else "🚶 Самовывоз"
     pay_text = payment_label.get(payment, payment)
@@ -886,10 +969,12 @@ async def process_order(event, vk_id: int, session: AsyncSession):
             f"Доставка: {delivery_cost}₽\n"
             f"Итого: {grand_total}₽"
         )
-        if ADMIN_CHAT_ID:
-            await send_vk_message(0, admin_msg, chat_id=ADMIN_CHAT_ID, keyboard=get_order_action_keyboard(order.id))
-        else:
-            await notify_staff_by_role(UserRole.ADMIN, admin_msg, order_id=order.id)
+        await notify_staff_by_role(
+            UserRole.ADMIN,
+            admin_msg,
+            order_id=order.id,
+            chat_id=ADMIN_CHAT_ID
+        )
     except Exception as e:
         logger.error(f"Admin notification failed for order #{order.id}: {e}")
 
@@ -1124,3 +1209,110 @@ async def show_statistics(event):
             f"  Выручка: {week_total or 0}₽",
             keyboard=get_admin_keyboard()
         )
+
+
+async def handle_callback(event):
+    obj = event.object
+    user_id = obj.get("user_id") or obj.get("peer_id")
+    payload = obj.get("payload", {})
+    if isinstance(payload, str):
+        import json
+        payload = json.loads(payload)
+
+    t = payload.get("t")
+    order_id_str = payload.get("i")
+    if not order_id_str:
+        return
+    order_id = int(order_id_str)
+
+    if t == "confirm":
+        async with async_session() as session:
+            result = await session.execute(select(Order).where(Order.id == order_id))
+            order = result.scalar_one_or_none()
+            if order:
+                order.status = OrderStatus.CONFIRMED
+                await session.commit()
+                items_text = await get_order_items_text(order_id)
+                await notify_kitchen(order_id, items_text)
+                logger.info(f"Order #{order_id} confirmed via callback")
+
+    elif t == "cancel":
+        async with async_session() as session:
+            result = await session.execute(select(Order).where(Order.id == order_id))
+            order = result.scalar_one_or_none()
+            if order:
+                order.status = OrderStatus.CANCELLED
+                await session.commit()
+                await notify_status_change(order_id, OrderStatus.CANCELLED)
+                logger.info(f"Order #{order_id} cancelled via callback")
+
+    elif t == "start":
+        async with async_session() as session:
+            result = await session.execute(select(Order).where(Order.id == order_id))
+            order = result.scalar_one_or_none()
+            if order:
+                order.status = OrderStatus.PREPARING
+                await session.commit()
+                await notify_status_change(order_id, OrderStatus.PREPARING)
+                logger.info(f"Order #{order_id} started preparing via callback")
+
+    elif t == "ready":
+        async with async_session() as session:
+            result = await session.execute(select(Order).where(Order.id == order_id))
+            order = result.scalar_one_or_none()
+            if order:
+                order.status = OrderStatus.READY
+                await session.commit()
+                await notify_status_change(order_id, OrderStatus.READY)
+                if order.delivery_type == "delivery":
+                    items_text = await get_order_items_text(order_id)
+                    address = order.address or "Не указан"
+                    await notify_courier(order_id, f"Адрес: {address}\n{items_text}")
+                logger.info(f"Order #{order_id} ready via callback")
+
+    elif t == "take":
+        async with async_session() as session:
+            result = await session.execute(select(Order).where(Order.id == order_id))
+            order = result.scalar_one_or_none()
+            if order:
+                async with httpx.AsyncClient(timeout=10) as client:
+                    from vkbottle import Keyboard, KeyboardButtonColor, Callback
+                    kb = Keyboard(one_time=True, inline=True)
+                    kb.add(Callback("⏱ 20 мин", payload={"t": "time", "i": str(order_id), "m": 20}), color=KeyboardButtonColor.PRIMARY)
+                    kb.add(Callback("⏱ 30 мин", payload={"t": "time", "i": str(order_id), "m": 30}), color=KeyboardButtonColor.PRIMARY)
+                    kb.row()
+                    kb.add(Callback("⏱ 40 мин", payload={"t": "time", "i": str(order_id), "m": 40}), color=KeyboardButtonColor.SECONDARY)
+                    kb.add(Callback("⏱ 50 мин", payload={"t": "time", "i": str(order_id), "m": 50}), color=KeyboardButtonColor.SECONDARY)
+                    await client.get("https://api.vk.com/method/messages.send", params={
+                        "access_token": VK_BOT_TOKEN,
+                        "user_id": user_id,
+                        "message": "Через сколько минут доставите?",
+                        "keyboard": kb.get_json(),
+                        "random_id": 0,
+                        "v": "5.199"
+                    })
+                logger.info(f"Order #{order_id} taken by courier")
+
+    elif t == "delivered":
+        async with async_session() as session:
+            result = await session.execute(select(Order).where(Order.id == order_id))
+            order = result.scalar_one_or_none()
+            if order:
+                order.status = OrderStatus.DELIVERED
+                await session.commit()
+                await notify_status_change(order_id, OrderStatus.DELIVERED)
+                logger.info(f"Order #{order_id} delivered via callback")
+
+    elif t == "time":
+        minutes = payload.get("m")
+        if minutes:
+            async with async_session() as session:
+                result = await session.execute(select(Order).where(Order.id == order_id))
+                order = result.scalar_one_or_none()
+                if order:
+                    order.status = OrderStatus.DELIVERING
+                    order.delivery_estimated_minutes = minutes
+                    await session.commit()
+                    await notify_status_change(order_id, OrderStatus.DELIVERING)
+                    await notify_delivery_time(order_id, minutes)
+                    logger.info(f"Order #{order_id} delivering in {minutes} min via callback")
