@@ -355,6 +355,7 @@ async def handle_message(event):
     raw = event.text.strip()
     text = strip_buttons(raw)
     vk_id = event.from_id
+    logger.info(f"handle_message: vk_id={vk_id} raw='{raw}' text='{text}'")
 
     if is_rate_limited(vk_id):
         await event.answer("Не так быстро, подождите немного.")
@@ -406,6 +407,7 @@ async def handle_message(event):
                         await event.answer(text_out, keyboard=get_menu_keyboard())
 
         elif text == "корзина":
+            logger.info(f"handle_message: matched 'корзина' for vk_id={vk_id}")
             await show_cart(event, vk_id, session)
 
         elif any(w in text for w in ("мои заказы", "мои заказ", "где заказ", "заказ где", "мой заказ")):
