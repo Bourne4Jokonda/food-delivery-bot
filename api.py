@@ -13,6 +13,10 @@ from database.models import Base, Order, OrderItem, MenuItem, OrderStatus, User,
 
 
 CRM_API_KEY = os.getenv("CRM_API_KEY", "")
+VK_BOT_TOKEN = os.getenv("VK_BOT_TOKEN")
+ADMIN_CHAT_ID = int(os.getenv("ADMIN_CHAT_ID", "0")) or None
+KITCHEN_CHAT_ID = int(os.getenv("KITCHEN_CHAT_ID", "0")) or None
+COURIER_CHAT_ID = int(os.getenv("COURIER_CHAT_ID", "0")) or None
 CRM_ALLOWED_ORIGINS = [o.strip() for o in os.getenv("CRM_ALLOWED_ORIGINS", "http://localhost:8080,http://127.0.0.1:8080").split(",") if o.strip()]
 
 # Rate limiting for auth endpoint
@@ -132,7 +136,6 @@ STATUS_LABELS = {
     "ready": "🔔 Готов", "delivering": "🚗 В доставке", "delivered": "🎉 Доставлен", "cancelled": "❌ Отменён"
 }
 KEY_STATUSES = {"ready", "delivering", "delivered", "cancelled"}
-VK_BOT_TOKEN = os.getenv("VK_BOT_TOKEN")
 
 
 async def notify_client(order_id: int, new_status: str):
@@ -154,6 +157,54 @@ async def notify_client(order_id: int, new_status: str):
                 await client.get("https://api.vk.com/method/messages.send", params={
                     "access_token": VK_BOT_TOKEN, "user_id": vk_id, "message": msg, "random_id": 0, "v": "5.199"
                 })
+    except Exception:
+        pass
+
+
+async def send_to_chat(chat_id: int, message: str):
+    if not chat_id or not VK_BOT_TOKEN:
+        return
+    try:
+        real_chat_id = chat_id - 2000000000 if chat_id > 2000000000 else chat_id
+        async with httpx.AsyncClient(timeout=10) as client:
+            await client.get("https://api.vk.com/method/messages.send", params={
+                "access_token": VK_BOT_TOKEN, "chat_id": real_chat_id, "message": message, "random_id": 0, "v": "5.199"
+            })
+    except Exception:
+        pass
+
+
+async def get_order_items_text(order_id: int) -> str:
+    try:
+        async with async_session() as session:
+            result = await session.execute(
+                select(OrderItem, MenuItem).join(MenuItem, OrderItem.menu_item_id == MenuItem.id).where(OrderItem.order_id == order_id)
+            )
+            rows = result.all()
+            return "\n".join(f"  • {row[1].name} x{row[0].quantity} — {row[1].price * row[0].quantity}₽" for row in rows)
+    except Exception:
+        return ""
+
+
+async def notify_staff_crm(order_id: int, new_status: str):
+    try:
+        async with async_session() as session:
+            result = await session.execute(select(Order).where(Order.id == order_id))
+            order = result.scalar_one_or_none()
+            if not order:
+                return
+            items_text = await get_order_items_text(order_id)
+            if new_status == "confirmed":
+                msg = f"👨‍🍳 Заказ #{order_id} подтвержден!\n\n{items_text}"
+                await send_to_chat(KITCHEN_CHAT_ID, msg)
+            elif new_status == "ready":
+                if order.delivery_type == "delivery":
+                    address = order.address or "Не указан"
+                    msg = f"🚗 Заказ #{order_id} готов к доставке!\nАдрес: {address}\n\n{items_text}"
+                    await send_to_chat(COURIER_CHAT_ID, msg)
+            elif new_status == "preparing":
+                msg = f"👨‍🍳 Заказ #{order_id} взят в работу"
+                await send_to_chat(KITCHEN_CHAT_ID, msg)
     except Exception:
         pass
 
@@ -233,6 +284,7 @@ async def update_order_status(order_id: int, update: StatusUpdate):
         
         await session.commit()
         await notify_client(order_id, update.status)
+        await notify_staff_crm(order_id, update.status)
         return {"status": "ok"}
 
 
