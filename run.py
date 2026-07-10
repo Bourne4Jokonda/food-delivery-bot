@@ -77,7 +77,11 @@ async def run_bot_polling():
     try:
         logger.info("Starting bot Long Polling...")
         async for event in polling.listen():
-            await bot.process_event(event)
+            for update in event.get("updates", []):
+                try:
+                    await bot.router.route(update, polling.api)
+                except Exception as e:
+                    logger.error(f"Route error: {e}", exc_info=True)
     except Exception as e:
         logger.error(f"Bot polling error: {e}", exc_info=True)
 
