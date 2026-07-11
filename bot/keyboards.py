@@ -22,6 +22,7 @@ def get_menu_keyboard():
     keyboard.add(Text("🍟 Снэки"), color=KeyboardButtonColor.SECONDARY)
     keyboard.add(Text("🥤 Напитки"), color=KeyboardButtonColor.SECONDARY)
     keyboard.row()
+    keyboard.add(Text("🛒 Корзина"), color=KeyboardButtonColor.POSITIVE)
     keyboard.add(Text("◀️ Назад"), color=KeyboardButtonColor.NEGATIVE)
     return keyboard
 
