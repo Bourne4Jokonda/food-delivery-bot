@@ -753,13 +753,21 @@ async def show_cart(event, vk_id: int, session: AsyncSession = None):
 
         total = 0
         items_info = []
-        async with async_session() as s:
+        if session:
             for item in cart:
-                result = await s.execute(select(MenuItem).where(MenuItem.id == item["id"]))
+                result = await session.execute(select(MenuItem).where(MenuItem.id == item["id"]))
                 menu_item = result.scalar_one()
                 subtotal = menu_item.price * item["quantity"]
                 total += subtotal
                 items_info.append((menu_item, item["quantity"], subtotal))
+        else:
+            async with async_session() as s:
+                for item in cart:
+                    result = await s.execute(select(MenuItem).where(MenuItem.id == item["id"]))
+                    menu_item = result.scalar_one()
+                    subtotal = menu_item.price * item["quantity"]
+                    total += subtotal
+                    items_info.append((menu_item, item["quantity"], subtotal))
 
         for menu_item, qty, subtotal in items_info:
             msg = f"{'➖' if qty > 1 else '🗑'} {menu_item.name} x{qty} — {subtotal}₽"
