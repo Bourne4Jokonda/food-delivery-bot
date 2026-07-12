@@ -77,31 +77,31 @@ def get_admin_keyboard():
 
 
 def get_order_action_keyboard(order_id: int):
-    keyboard = Keyboard(one_time=True, inline=True)
-    keyboard.add(Callback(f"✅ Принять {order_id}", payload={"t": "confirm", "i": str(order_id)}), color=KeyboardButtonColor.POSITIVE)
-    keyboard.add(Callback(f"❌ Отклонить {order_id}", payload={"t": "cancel", "i": str(order_id)}), color=KeyboardButtonColor.NEGATIVE)
+    keyboard = Keyboard(one_time=True, inline=False)
+    keyboard.add(Text(f"✅ Принять {order_id}"), color=KeyboardButtonColor.POSITIVE)
+    keyboard.add(Text(f"❌ Отклонить {order_id}"), color=KeyboardButtonColor.NEGATIVE)
     return keyboard
 
 
 def get_kitchen_keyboard(order_id: int):
-    keyboard = Keyboard(one_time=True, inline=True)
-    keyboard.add(Callback(f"👨‍🍳 Начать {order_id}", payload={"t": "start", "i": str(order_id)}), color=KeyboardButtonColor.PRIMARY)
-    keyboard.add(Callback(f"✅ Готово {order_id}", payload={"t": "ready", "i": str(order_id)}), color=KeyboardButtonColor.POSITIVE)
+    keyboard = Keyboard(one_time=True, inline=False)
+    keyboard.add(Text(f"👨‍🍳 Начать {order_id}"), color=KeyboardButtonColor.PRIMARY)
+    keyboard.add(Text(f"✅ Готово {order_id}"), color=KeyboardButtonColor.POSITIVE)
     return keyboard
 
 
 def get_courier_keyboard(order_id: int):
-    keyboard = Keyboard(one_time=True, inline=True)
-    keyboard.add(Callback(f"🚗 Взять {order_id}", payload={"t": "take", "i": str(order_id)}), color=KeyboardButtonColor.PRIMARY)
-    keyboard.add(Callback(f"✅ Доставлен {order_id}", payload={"t": "delivered", "i": str(order_id)}), color=KeyboardButtonColor.POSITIVE)
+    keyboard = Keyboard(one_time=True, inline=False)
+    keyboard.add(Text(f"🚗 Взять {order_id}"), color=KeyboardButtonColor.PRIMARY)
+    keyboard.add(Text(f"✅ Доставлен {order_id}"), color=KeyboardButtonColor.POSITIVE)
     return keyboard
 
 
 def get_delivery_time_keyboard(order_id: int):
-    keyboard = Keyboard(one_time=True, inline=True)
-    keyboard.add(Callback(f"⏱ 20 мин", payload={"t": "time", "i": str(order_id), "m": 20}), color=KeyboardButtonColor.PRIMARY)
-    keyboard.add(Callback(f"⏱ 30 мин", payload={"t": "time", "i": str(order_id), "m": 30}), color=KeyboardButtonColor.PRIMARY)
+    keyboard = Keyboard(one_time=True, inline=False)
+    keyboard.add(Text(f"⏱ 20 мин {order_id}"), color=KeyboardButtonColor.PRIMARY)
+    keyboard.add(Text(f"⏱ 30 мин {order_id}"), color=KeyboardButtonColor.PRIMARY)
     keyboard.row()
-    keyboard.add(Callback(f"⏱ 40 мин", payload={"t": "time", "i": str(order_id), "m": 40}), color=KeyboardButtonColor.SECONDARY)
-    keyboard.add(Callback(f"⏱ 50 мин", payload={"t": "time", "i": str(order_id), "m": 50}), color=KeyboardButtonColor.SECONDARY)
+    keyboard.add(Text(f"⏱ 40 мин {order_id}"), color=KeyboardButtonColor.SECONDARY)
+    keyboard.add(Text(f"⏱ 50 мин {order_id}"), color=KeyboardButtonColor.SECONDARY)
     return keyboard

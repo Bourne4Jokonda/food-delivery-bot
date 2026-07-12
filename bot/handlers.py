@@ -463,9 +463,9 @@ async def handle_message(event):
 
             cart = await get_cart(vk_id)
             total = 0
-            async with async_session() as session:
+            async with async_session() as cart_session:
                 for ci in cart:
-                    result = await session.execute(select(MenuItem).where(MenuItem.id == ci["id"]))
+                    result = await cart_session.execute(select(MenuItem).where(MenuItem.id == ci["id"]))
                     mi = result.scalar_one()
                     total += mi.price * ci["quantity"]
 
@@ -746,28 +746,20 @@ async def cart_remove_by_name(event, vk_id: int, text: str):
 
 async def show_cart(event, vk_id: int, session: AsyncSession = None):
     try:
-        cart = await get_cart(vk_id, session)
+        cart = await get_cart(vk_id)
         if not cart:
             await event.answer("Корзина пуста", keyboard=get_main_menu_keyboard())
             return
 
         total = 0
         items_info = []
-        if session:
+        async with async_session() as s:
             for item in cart:
-                result = await session.execute(select(MenuItem).where(MenuItem.id == item["id"]))
+                result = await s.execute(select(MenuItem).where(MenuItem.id == item["id"]))
                 menu_item = result.scalar_one()
                 subtotal = menu_item.price * item["quantity"]
                 total += subtotal
                 items_info.append((menu_item, item["quantity"], subtotal))
-        else:
-            async with async_session() as s:
-                for item in cart:
-                    result = await s.execute(select(MenuItem).where(MenuItem.id == item["id"]))
-                    menu_item = result.scalar_one()
-                    subtotal = menu_item.price * item["quantity"]
-                    total += subtotal
-                    items_info.append((menu_item, item["quantity"], subtotal))
 
         for menu_item, qty, subtotal in items_info:
             msg = f"{'➖' if qty > 1 else '🗑'} {menu_item.name} x{qty} — {subtotal}₽"
@@ -876,7 +868,12 @@ async def handle_delivery_choice(event, vk_id: int, text: str):
     if "доставка" in text:
         pending_orders[vk_id] = {"delivery_type": "delivery"}
         await save_pending_order(vk_id)
-        await event.answer("Укажите адрес доставки:")
+        await event.answer(
+            "Укажите адрес доставки:\n\n"
+            "🏙 Если город Родники — просто укажите улицу и дом\n"
+            "📍 Если другой населённый пункт — укажите его название, улицу и дом\n"
+            "Например: Деревеньки, ул. Центральная 5"
+        )
     elif "самовывоз" in text:
         pending_orders[vk_id] = {"delivery_type": "pickup"}
         await save_pending_order(vk_id)
